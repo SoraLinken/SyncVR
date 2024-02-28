@@ -1,0 +1,43 @@
+Algorithm: Calculate Synchrony in VR
+
+Inputs:
+- user1_data_stream, user2_data_stream: Streams of VR tracking data for two users
+- sample_size: Number of data points in each sample (e.g., 20)
+- time_interval: Time between data recordings (e.g., 0.2 seconds)
+- synchrony_threshold: Threshold for considering users as synchronized (e.g., 60%)
+
+Outputs:
+- synchrony_scores: List of synchrony scores for each time segment
+
+Procedure:
+1. Initialize synchrony_scores as an empty list
+
+2. While data streams are active:
+    2.1 Collect sample_size data points from user1_data_stream and user2_data_stream, sampled every time_interval seconds
+
+    2.2 Normalize data points in both samples for consistency
+
+    2.3 Calculate Pearson correlation coefficient:
+        - Calculate covariance between user1 and user2 data samples
+        - Calculate standard deviations for both user1 and user2 samples
+        - Pearson correlation = covariance / (std_dev_user1 * std_dev_user2)
+
+    2.4 Calculate Spearman's rank correlation:
+        - Rank data points in both user1 and user2 samples
+        - Calculate Pearson correlation coefficient on the ranks
+
+    2.5 Perform Frequency Analysis:
+        - Apply Fourier Transform to both user1 and user2 samples to convert to frequency domain
+        - Identify and compare dominant frequencies in both samples
+
+    2.6 Combine measurements into a composite synchrony score:
+        - Assign weights to Pearson, Spearman, and Frequency Analysis scores based on their importance
+        - Calculate weighted average of these scores
+
+    2.7 If composite synchrony score > synchrony_threshold, consider users synchronized for this segment
+
+    2.8 Append composite synchrony score to synchrony_scores
+
+3. Return synchrony_scores
+
+End Algorithm
