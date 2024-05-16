@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <ui:VisualElement name="VisualElement" style="flex-grow: 1;">
+        <ui:VisualElement name="Container" style="flex-grow: 0; height: 56px; flex-direction: row-reverse; top: initial; left: initial; opacity: 1; justify-content: flex-end; width: 126px; margin-right: 0; margin-left: auto; -unity-font-style: bold; background-color: rgb(175, 175, 175);">
+            <ui:Label tabindex="-1" text="NIGGA" parse-escape-sequences="true" display-tooltip-when-elided="true" style="width: 120px; align-items: auto; -unity-text-align: middle-center; height: 49px;" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
