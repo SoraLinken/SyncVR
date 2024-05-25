@@ -67,69 +67,91 @@ public class SynchronizationManager : MonoBehaviour
             return;
         }
 
-        double totalDifference = 0;
-        int comparisons = 0;
+        List<double> synchronyScores = new List<double>();
 
-        const double positionScale = 80.0;
-        const double rotationScale = 15.0;
-        const double positionNormalizer = 0.915;
-        const double rotationNormalizer = 0.800;
-        const double epsilon = 1e-6;
+        const int sampleSize = 20; // Example sample size
+        const double timeInterval = 0.2; // Example time interval in seconds
+        const double synchronyThreshold = 60.0; // Example synchrony threshold
 
-        for (int i = 0; i < networkPlayers.Count; i++)
+        while (dataStreamsActive())
         {
-            for (int j = i + 1; j < networkPlayers.Count; j++)
+            // Step 2.1: Collect data points
+            var user1Samples = CollectSamples(networkPlayers[0], sampleSize, timeInterval);
+            var user2Samples = CollectSamples(networkPlayers[1], sampleSize, timeInterval);
+
+            // Step 2.2: Normalize data points
+            NormalizeData(user1Samples);
+            NormalizeData(user2Samples);
+
+            // Step 2.3: Calculate Pearson correlation coefficient
+            double pearsonCorrelation = CalculatePearsonCorrelation(user1Samples, user2Samples);
+
+            // Step 2.4: Calculate Spearman's rank correlation
+            double spearmanCorrelation = CalculateSpearmanCorrelation(user1Samples, user2Samples);
+
+            // Step 2.5: Perform Frequency Analysis
+            double frequencyAnalysisScore = PerformFrequencyAnalysis(user1Samples, user2Samples);
+
+            // Step 2.6: Combine measurements into a composite synchrony score
+            double compositeScore = CalculateCompositeScore(pearsonCorrelation, spearmanCorrelation, frequencyAnalysisScore);
+
+            // Step 2.7: Check if users are synchronized for this segment
+            if (compositeScore > synchronyThreshold)
             {
-                ulong id1 = networkPlayers[i].NetworkObjectId;
-                ulong id2 = networkPlayers[j].NetworkObjectId;
-
-                foreach (var tag in history[id1].Keys)
-                {
-                    if (!history[id1].ContainsKey(tag) || !history[id2].ContainsKey(tag)) continue;
-
-                    var queue1 = history[id1][tag];
-                    var queue2 = history[id2][tag];
-                    if (queue1.Count == 0 || queue2.Count == 0) continue;
-
-                    double averagePositionDifference = 0;
-                    double averageRotationDifference = 0;
-
-                    var array1 = queue1.ToArray();
-                    var array2 = queue2.ToArray();
-                    int count = Math.Min(array1.Length, array2.Length);
-
-                    for (int k = 0; k < count; k++)
-                    {
-                        double positionDiff = Vector3.Distance(array1[k].position, array2[k].position);
-                        double rotationDiff = Quaternion.Angle(array1[k].rotation, array2[k].rotation) / 180.0;
-                        // Debug.Log($"Position Difference: {positionDiff}, Rotation Difference: {rotationDiff}");
-                        // Safeguarding the power calculation to avoid negative inputs
-                        averagePositionDifference += Math.Max(0, Math.Pow(positionNormalizer + positionDiff, 7) - positionNormalizer);
-                        averageRotationDifference += Math.Max(0, Math.Pow(rotationNormalizer + rotationDiff, 4) - rotationNormalizer);
-                    }
-
-                    averagePositionDifference /= count;
-                    averageRotationDifference /= count;
-
-                    totalDifference += (averagePositionDifference * positionScale) + (averageRotationDifference * rotationScale);
-                }
-                comparisons++;
+                synchronyScores.Add(compositeScore);
             }
         }
 
-        double syncScore = 100;
-        if (comparisons > 0)
-        {
-            // Ensure that the denominator is never zero
-            syncScore = 100 - Math.Sqrt(Math.Max(0, totalDifference / comparisons + epsilon));
-        }
-        else
-        {
-            syncScore = 0; // No valid comparisons
-        }
-
-        UpdateSyncPercentageUI(Math.Max(0, syncScore));
+        // Calculate the overall synchronization score
+        double overallSyncScore = synchronyScores.Any() ? synchronyScores.Average() : 0;
+        UpdateSyncPercentageUI(Math.Max(0, overallSyncScore));
     }
+
+    bool dataStreamsActive()
+    {
+        // Implement logic to check if data streams are active
+        return true; // Placeholder
+    }
+
+    List<Vector3> CollectSamples(NetworkPlayer player, int sampleSize, double timeInterval)
+    {
+        // Implement logic to collect 'sampleSize' data points from the player's data stream at 'timeInterval' intervals
+        return new List<Vector3>(); // Placeholder
+    }
+
+    void NormalizeData(List<Vector3> samples)
+    {
+        // Implement logic to normalize the data points in the sample
+    }
+
+    double CalculatePearsonCorrelation(List<Vector3> samples1, List<Vector3> samples2)
+    {
+        // Implement Pearson correlation calculation
+        return 0.0; // Placeholder
+    }
+
+    double CalculateSpearmanCorrelation(List<Vector3> samples1, List<Vector3> samples2)
+    {
+        // Implement Spearman's rank correlation calculation
+        return 0.0; // Placeholder
+    }
+
+    double PerformFrequencyAnalysis(List<Vector3> samples1, List<Vector3> samples2)
+    {
+        // Implement frequency analysis using Fourier Transform and compare dominant frequencies
+        return 0.0; // Placeholder
+    }
+
+    double CalculateCompositeScore(double pearson, double spearman, double frequencyAnalysis)
+    {
+        // Assign weights and calculate the weighted average of the scores
+        const double pearsonWeight = 0.4;
+        const double spearmanWeight = 0.4;
+        const double frequencyWeight = 0.2;
+        
+        return (pearson * pearsonWeight) + (spearman * spearmanWeight) + (frequencyAnalysis * frequencyWeight);
+    }
+
 
     void UpdateSyncPercentageUI(double score)
     {
