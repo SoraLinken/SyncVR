@@ -277,5 +277,12 @@ public class SynchronizationManager : MonoBehaviour
         return velocity;
     }
 
+    string CalculateDirection(Vector3 velocity)
+    {
+        if (velocity.y > 0) return "Up";
+        else if (velocity.y < 0) return "Down";
+        else return "Neutral";
+    }
+
 
 }
