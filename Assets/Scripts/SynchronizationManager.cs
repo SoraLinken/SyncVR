@@ -70,10 +70,8 @@ public class SynchronizationManager : MonoBehaviour
         double totalDifference = 0;
         int comparisons = 0;
 
-        const double positionScale = 80.0;
-        const double rotationScale = 15.0;
-        const double positionNormalizer = 0.915;
-        const double rotationNormalizer = 0.800;
+        const double angleScale = 10.0;
+        const double angleNormalizer = 0.5;
         const double epsilon = 1e-6;
 
         for (int i = 0; i < networkPlayers.Count; i++)
@@ -83,7 +81,7 @@ public class SynchronizationManager : MonoBehaviour
                 ulong id1 = networkPlayers[i].NetworkObjectId;
                 ulong id2 = networkPlayers[j].NetworkObjectId;
 
-                foreach (var tag in history[id1].Keys)
+                foreach (var tag in new[] { "LeftHandTarget", "RightHandTarget" })
                 {
                     if (!history[id1].ContainsKey(tag) || !history[id2].ContainsKey(tag)) continue;
 
@@ -91,8 +89,7 @@ public class SynchronizationManager : MonoBehaviour
                     var queue2 = history[id2][tag];
                     if (queue1.Count == 0 || queue2.Count == 0) continue;
 
-                    double averagePositionDifference = 0;
-                    double averageRotationDifference = 0;
+                    double averageAngleDifference = 0;
 
                     var array1 = queue1.ToArray();
                     var array2 = queue2.ToArray();
@@ -100,27 +97,20 @@ public class SynchronizationManager : MonoBehaviour
 
                     for (int k = 0; k < count; k++)
                     {
-                        double positionDiff = Vector3.Distance(array1[k].position, array2[k].position);
-                        double rotationDiff = Quaternion.Angle(array1[k].rotation, array2[k].rotation) / 180.0;
-                        // Debug.Log($"Position Difference: {positionDiff}, Rotation Difference: {rotationDiff}");
-                        // Safeguarding the power calculation to avoid negative inputs
-                        averagePositionDifference += Math.Max(0, Math.Pow(positionNormalizer + positionDiff, 7) - positionNormalizer);
-                        averageRotationDifference += Math.Max(0, Math.Pow(rotationNormalizer + rotationDiff, 4) - rotationNormalizer);
+                        double angleDiff = Quaternion.Angle(array1[k].rotation, array2[k].rotation) / 180.0;
+                        averageAngleDifference += Math.Max(0, Math.Pow(angleNormalizer + angleDiff, 4) - angleNormalizer);
                     }
 
-                    averagePositionDifference /= count;
-                    averageRotationDifference /= count;
-
-                    totalDifference += (averagePositionDifference * positionScale) + (averageRotationDifference * rotationScale);
+                    averageAngleDifference /= count;
+                    totalDifference += (averageAngleDifference * angleScale);
+                    comparisons++;
                 }
-                comparisons++;
             }
         }
 
         double syncScore = 100;
         if (comparisons > 0)
         {
-            // Ensure that the denominator is never zero
             syncScore = 100 - Math.Sqrt(Math.Max(0, totalDifference / comparisons + epsilon));
         }
         else
@@ -130,6 +120,7 @@ public class SynchronizationManager : MonoBehaviour
 
         UpdateSyncPercentageUI(Math.Max(0, syncScore));
     }
+
 
     void UpdateSyncPercentageUI(double score)
     {
@@ -266,6 +257,7 @@ public class SynchronizationManager : MonoBehaviour
         }
         return null;
     }
+
     Vector3 CalculateVelocity(Queue<(Vector3 position, Quaternion rotation)> history)
     {
         if (history.Count < 2) return Vector3.zero;
