@@ -266,5 +266,16 @@ public class SynchronizationManager : MonoBehaviour
         }
         return null;
     }
+    Vector3 CalculateVelocity(Queue<(Vector3 position, Quaternion rotation)> history)
+    {
+        if (history.Count < 2) return Vector3.zero;
+
+        var positions = history.Select(h => h.position).ToArray();
+        var times = Enumerable.Range(0, positions.Length).Select(i => i * updateInterval).ToArray();
+
+        Vector3 velocity = (positions.Last() - positions.First()) / (times.Last() - times.First());
+        return velocity;
+    }
+
 
 }
