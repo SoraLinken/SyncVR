@@ -41,14 +41,22 @@ public class SynchronizationManager : MonoBehaviour
                 {
                     history[netObject.NetworkObjectId] = new Dictionary<string, Queue<(Vector3, Quaternion)>>();
                 }
-                // Update the general history for all network players
                 UpdateHistory(netObject, history[netObject.NetworkObjectId], maxRecords);
 
-                // Special handling for the local player with a separate history dictionary
                 if (netObject.IsLocalPlayer)
                 {
-                    // Update the local player's history without a max records limit
                     UpdateHistory(netObject, localPlayerHistory, int.MaxValue);
+                }
+
+                foreach (var tag in new[] { "LeftHandTarget", "RightHandTarget" })
+                {
+                    if (history[netObject.NetworkObjectId].ContainsKey(tag))
+                    {
+                        var handHistory = history[netObject.NetworkObjectId][tag];
+                        Vector3 velocity = CalculateVelocity(handHistory);
+                        string direction = CalculateDirection(velocity);
+                        Debug.Log($"Player: {netObject.NetworkObjectId}, Hand: {tag}, Velocity: {velocity}, Direction: {direction}");
+                    }
                 }
             }
         }
@@ -58,6 +66,7 @@ public class SynchronizationManager : MonoBehaviour
             CheckSynchronization();
         }
     }
+
 
     void CheckSynchronization()
     {
