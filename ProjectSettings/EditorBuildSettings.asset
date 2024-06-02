@@ -6,11 +6,14 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 0
-    path: Assets/Scenes/Base Scene.unity
+    path: Assets/UnityTechnologies/Basic Asset Pack Interior/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
-  - enabled: 1
-    path: Assets/Scenes/Base Scene 1.unity
+  - enabled: 0
+    path: Assets/Scenes/Old.unity
     guid: 3f8bcacd2fda0e04b920b7f73725a37e
+  - enabled: 1
+    path: Assets/Scenes/Game.unity
+    guid: a42c4f5182810db48856e82ca047c85f
   m_configObjects:
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: ae4de3a945f3b8948b832cb850e76ea9,
       type: 2}

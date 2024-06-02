@@ -10,6 +10,7 @@ TagManager:
   - Root
   - SyncCanvas
   - SyncPercentage
+  - Character
   layers:
   - Default
   - TransparentFX

@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 
 public class NetworkConnect : MonoBehaviour
 {
+    public static NetworkConnect Instance { get; private set; } // Singleton instance
     public int maxConnection = 20;
     public UnityTransport transport;
     public bool activateMultiplayer;
@@ -25,6 +26,17 @@ public class NetworkConnect : MonoBehaviour
 
     private async void Awake()
     {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
+        
         if (!activateMultiplayer)
             return;
 
@@ -34,7 +46,6 @@ public class NetworkConnect : MonoBehaviour
             if (!AuthenticationService.Instance.IsSignedIn)
                 await AuthenticationService.Instance.SignInAnonymouslyAsync();
 
-            await JoinOrCreate();
         }
         catch (Exception e)
         {
@@ -94,10 +105,9 @@ public class NetworkConnect : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.LogError("Maximum retry attempts reached, failing...");
+            Debug.LogError("Maximum retry attempts reached, failing..." +  e);
         }
     }
-
 
     public async Task Create(string lobbyName)
     {
@@ -111,9 +121,11 @@ public class NetworkConnect : MonoBehaviour
             transport.SetHostRelayData(allocation.RelayServer.IpV4, (ushort)allocation.RelayServer.Port,
                 allocation.AllocationIdBytes, allocation.Key, allocation.ConnectionData);
 
-            CreateLobbyOptions lobbyOptions = new CreateLobbyOptions();
-            lobbyOptions.IsPrivate = false;
-            lobbyOptions.Data = new Dictionary<string, DataObject>();
+            CreateLobbyOptions lobbyOptions = new CreateLobbyOptions
+            {
+                IsPrivate = false,
+                Data = new Dictionary<string, DataObject>()
+            };
             DataObject dataObject = new DataObject(DataObject.VisibilityOptions.Public, newJoinCode);
             lobbyOptions.Data.Add("JOIN_CODE", dataObject);
 
@@ -127,7 +139,6 @@ public class NetworkConnect : MonoBehaviour
             throw;  // Re-throw the exception to handle it further up the call stack if necessary
         }
     }
-
 
     private void Update()
     {
