@@ -28,7 +28,7 @@ public class GameManager : MonoBehaviour
     public static AvatarType avatarType = AvatarType.Hands;
 
     public TextMeshProUGUI timerText;
-    public static float[] phaseDurations = { 15f, 0f, 3f, 120f, 3f, 120f };
+    public static float[] phaseDurations = { 15f, 0f, 4f, 120f, 4f, 120f };
     public static int currentPhase = 0;
     public static float timeRemaining;
     public static List<Renderer> wallPaintRenderers = new List<Renderer>();
