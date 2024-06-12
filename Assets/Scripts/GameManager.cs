@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using Unity.Netcode;
+using System.Text.RegularExpressions;
 
 public class GameManager : MonoBehaviour
 {
@@ -28,20 +29,88 @@ public class GameManager : MonoBehaviour
     public static AvatarType avatarType = AvatarType.Hands;
 
     public TextMeshProUGUI timerText;
-    public static float[] phaseDurations = { 15f, 0f, 4f, 120f, 4f, 120f };
+    public static float[] phaseDurations = { 15f, 0f, 4f, 90f, 4f, 90f };
     public static int currentPhase = 0;
     public static float timeRemaining;
     public static List<Renderer> wallPaintRenderers = new List<Renderer>();
 
-    public static Color colorSuccess = Color.white;
-    public static Color colorBetween = Color.yellow;
-    public static Color colorFail = Color.red;
+    public static Color highSyncColor = Color.white;
+    public static Color midSyncColor = Color.white;
+    public static Color lowSyncColor = Color.white;
 
-    public static int successThreshold = 70;
-    public static int failThreshold = 40;
+    public static int highSync = 70;
+    public static int lowSync = 40;
 
+    public static float rateOfTesting = 0.15f; // Update interval in seconds
+    public static int historyLength = 8; // Maximum history records
+
+    void OnGameStart()
+    {
+        // uniqueId: string
+        // createdByEmail: string
+        // createdBy: string
+        // selectedParticipants: Participant[]
+        // phaseDuration: number
+        // historyLength: number
+        // rateOfTesting: number
+        // highSync: number
+        // lowSync: number
+        // date: Date
+        // experienceType: ExperienceType[]
+        // pendulumRotation: number
+        // highSyncColor: string
+        // midSyncColor: string
+        // lowSyncColor: string
+        // sessionId: string
+
+
+
+        string sessionId = "1";
+        StartCoroutine(
+            APIClient.GetRequest($"/on-game-start?sessionId={sessionId}",
+            data =>
+            {
+                Debug.Log("Game start data: " + data);
+                var gameStartData = JsonUtility.FromJson<GameStartData>(data);
+                phaseDurations = gameStartData.phaseDuration;
+                historyLength = gameStartData.historyLength;
+                rateOfTesting = gameStartData.rateOfTesting;
+                highSync = gameStartData.highSync;
+                lowSync = gameStartData.lowSync;
+                highSyncColor = ParseRGBColor(gameStartData.highSyncColor);
+                midSyncColor = ParseRGBColor(gameStartData.midSyncColor);
+                lowSyncColor = ParseRGBColor(gameStartData.lowSyncColor);
+            },
+            error =>
+            {
+                Debug.Log("Error getting game start data:" + error);
+            })
+        );
+    }
+
+     private Color ParseRGBColor(string rgbColor)
+    {
+        Regex regex = new Regex(@"rgb\((\d+),\s*(\d+),\s*(\d+)\)");
+        Match match = regex.Match(rgbColor);
+
+        if (match.Success)
+        {
+            int r = int.Parse(match.Groups[1].Value);
+            int g = int.Parse(match.Groups[2].Value);
+            int b = int.Parse(match.Groups[3].Value);
+
+            return new Color(r / 255f, g / 255f, b / 255f);
+        }
+        else
+        {
+            Debug.LogError("Invalid color string: " + rgbColor);
+            return Color.white; // Default color in case of error
+        }
+    }
+    
     void Start()
     {
+        OnGameStart();
         SwingingBall = GameObject.Find("SwingingBall");
         SwingingBallAnimator = SwingingBall.GetComponent<Animator>();
         SwingingBallAnimator.enabled = false;
@@ -164,10 +233,13 @@ public class GameManager : MonoBehaviour
     }
     void UpdateTimerDisplay(float timeToDisplay)
     {
-        timeToDisplay = Mathf.Max(0, timeToDisplay); // Ensure time is not negative
-        float minutes = Mathf.FloorToInt(timeToDisplay / 60);
-        float seconds = Mathf.FloorToInt(timeToDisplay % 60);
-        timerText.text = string.Format("{0:0}:{1:00}", minutes, seconds);
+        if (timerText)
+        {
+            timeToDisplay = Mathf.Max(0, timeToDisplay); // Ensure time is not negative
+            float minutes = Mathf.FloorToInt(timeToDisplay / 60);
+            float seconds = Mathf.FloorToInt(timeToDisplay % 60);
+            timerText.text = string.Format("{0:0}:{1:00}", minutes, seconds);
+        }
     }
 
     void CollectWallPaintRenderers()
@@ -198,19 +270,19 @@ public class GameManager : MonoBehaviour
     public static void ChangeWallPaintColorBasedOnNumber(int number)
     {
         Color newColor;
-        if (number > successThreshold)
+        if (number > highSync)
         {
-            newColor = colorSuccess;
+            newColor = highSyncColor;
         }
-        else if (number < failThreshold)
+        else if (number < lowSync)
         {
-            float t = number / (float)failThreshold; // Normalize number to [0, 1]
-            newColor = Color.Lerp(colorFail, colorBetween, t);
+            float t = number / (float)lowSync; // Normalize number to [0, 1]
+            newColor = Color.Lerp(lowSyncColor, midSyncColor, t);
         }
         else
         {
-            float t = (number - failThreshold) / (float)(successThreshold - failThreshold); // Normalize number to [0, 1]
-            newColor = Color.Lerp(colorBetween, colorSuccess, t);
+            float t = (number - lowSync) / (float)(highSync - lowSync); // Normalize number to [0, 1]
+            newColor = Color.Lerp(midSyncColor, highSyncColor, t);
         }
 
         ChangeWallPaintColorFunction(newColor);
@@ -262,4 +334,16 @@ public class GameManager : MonoBehaviour
             Debug.Log($"Player {player.OwnerClientId} has avatar type: {player.avatarType.Value}");
         }
     }
+}
+
+internal class GameStartData
+{
+    public float[] phaseDuration;
+    public int historyLength;
+    public float rateOfTesting;
+    public int highSync;
+    public int lowSync;
+    public string highSyncColor;
+    public string midSyncColor;
+    public string lowSyncColor;
 }

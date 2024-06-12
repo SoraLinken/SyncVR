@@ -18,12 +18,11 @@ public class SynchronizationManager : MonoBehaviour
     public Dictionary<string, Queue<(Vector3 position, Quaternion rotation)>> localPlayerHistory =
         new Dictionary<string, Queue<(Vector3 position, Quaternion rotation)>>();
 
-    private float updateInterval = 0.15f; // Update interval in seconds
-    private const int maxRecords = 8; // Maximum history records
+
 
     void Start()
     {
-        InvokeRepeating("UpdateNetworkPlayers", 0f, updateInterval);
+        InvokeRepeating("UpdateNetworkPlayers", 0f, GameManager.rateOfTesting);
     }
 
     void UpdateNetworkPlayers()
@@ -32,11 +31,11 @@ public class SynchronizationManager : MonoBehaviour
 
         if (networkPlayers.Count < 2)
         {
-            Debug.Log("Network players count less than 2");
+            // Debug.Log("Network players count less than 2");
             foreach (GameObject obj in allObjects)
             {
                 NetworkObject netObject = obj.GetComponent<NetworkObject>();
-                Debug.Log("Network Id: " + netObject);
+                // Debug.Log("Network Id: " + netObject);
                 if (netObject != null && !networkPlayers.Any(p => p.NetworkObjectId == netObject.NetworkObjectId))
                 {
                     networkPlayers.Add(netObject);
@@ -56,7 +55,7 @@ public class SynchronizationManager : MonoBehaviour
             }
 
             // Update the general history for all network players
-            UpdateHistory(netObject, history[netObject.NetworkObjectId], maxRecords);
+            UpdateHistory(netObject, history[netObject.NetworkObjectId], GameManager.historyLength);
 
             // Special handling for the local player with a separate history dictionary
             if (netObject.IsLocalPlayer)
