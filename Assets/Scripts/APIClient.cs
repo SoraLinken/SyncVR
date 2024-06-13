@@ -6,7 +6,7 @@ using UnityEngine.Networking;
 
 public static class APIClient
 {
-    private const string baseUrl = "http://localhost:8080/api";
+    private const string baseUrl = "http://34.44.201.24:8080/api";
 
     public static IEnumerator GetRequest(string endpoint, System.Action<string> onSuccess, System.Action<string> onError)
     {
