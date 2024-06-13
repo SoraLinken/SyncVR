@@ -3,6 +3,9 @@ using UnityEngine;
 using TMPro;
 using Unity.Netcode;
 using System.Text.RegularExpressions;
+using UnityEngine.XR.Interaction.Toolkit;
+
+
 
 public class GameManager : MonoBehaviour
 {
@@ -12,10 +15,15 @@ public class GameManager : MonoBehaviour
     public static GameObject xBot;
     public static GameObject yAvatar;
     public static GameObject xAvatar;
+
+    public static GameObject leftHand;
+    public static GameObject rightHand;
     public static GameObject leftHandModel;
     public static GameObject rightHandModel;
 
     public static GameObject glassRoomOne;
+
+    public static GameObject questionsCanvas;
 
     public static GameObject glassRoomTwo;
 
@@ -29,7 +37,7 @@ public class GameManager : MonoBehaviour
     public static AvatarType avatarType = AvatarType.Hands;
 
     public TextMeshProUGUI timerText;
-    public static float[] phaseDurations = { 15f, 0f, 4f, 90f, 4f, 90f };
+    public static float[] phaseDurations = { 15f, 0f, 4f, 60f, 4f, 60f, 0f };
     public static int currentPhase = 0;
     public static float timeRemaining;
     public static List<Renderer> wallPaintRenderers = new List<Renderer>();
@@ -43,6 +51,55 @@ public class GameManager : MonoBehaviour
 
     public static float rateOfTesting = 0.15f; // Update interval in seconds
     public static int historyLength = 8; // Maximum history records
+
+    public static string uniqueId = "";
+
+    public static string email = "";
+
+    public static List<Participant> SelectedParticipants;
+
+    void Start()
+    {
+        OnGameStart();
+        SwingingBall = GameObject.Find("SwingingBall");
+        SwingingBallAnimator = SwingingBall.GetComponent<Animator>();
+        SwingingBallAnimator.enabled = false;
+
+        glassRoomOne = GameObject.Find("GlassRoomOne");
+        glassRoomTwo = GameObject.Find("GlassRoomTwo");
+
+   
+
+        glassRoomOne.SetActive(false);
+        glassRoomTwo.SetActive(false);
+
+        yBot = GameObject.Find("YBot");
+        xBot = GameObject.Find("XBot");
+        yAvatar = GameObject.Find("YAvatar");
+        xAvatar = GameObject.Find("XAvatar");
+        leftHandModel = GameObject.Find("LeftHandModel");
+        rightHandModel = GameObject.Find("RightHandModel");
+        leftHand = GameObject.Find("LeftHand");
+        rightHand = GameObject.Find("RightHand");
+
+        questionsCanvas = GameObject.Find("QuestionsCanvas");
+        questionsCanvas.SetActive(false);
+
+        leftHand.GetComponent<LineRenderer>().enabled = false;
+        rightHand.GetComponent<LineRenderer>().enabled = false;
+
+        leftHand.GetComponent<XRInteractorLineVisual>().enabled = false;
+        rightHand.GetComponent<XRInteractorLineVisual>().enabled = false;
+
+
+
+        yAvatar.SetActive(false);
+        xAvatar.SetActive(false);
+
+        timerText = GameObject.Find("TimerText").GetComponent<TextMeshProUGUI>();
+        CollectWallPaintRenderers();
+        StartPhase(currentPhase);
+    }
 
     void OnGameStart()
     {
@@ -72,7 +129,9 @@ public class GameManager : MonoBehaviour
             {
                 Debug.Log("Game start data: " + data);
                 var gameStartData = JsonUtility.FromJson<GameStartData>(data);
-                phaseDurations = gameStartData.phaseDuration;
+                uniqueId = gameStartData.uniqueId;
+                phaseDurations[3] = gameStartData.phaseDuration;
+                phaseDurations[5] = gameStartData.phaseDuration;
                 historyLength = gameStartData.historyLength;
                 rateOfTesting = gameStartData.rateOfTesting;
                 highSync = gameStartData.highSync;
@@ -80,6 +139,9 @@ public class GameManager : MonoBehaviour
                 highSyncColor = ParseRGBColor(gameStartData.highSyncColor);
                 midSyncColor = ParseRGBColor(gameStartData.midSyncColor);
                 lowSyncColor = ParseRGBColor(gameStartData.lowSyncColor);
+
+                // Store the selected participants
+                SelectedParticipants = gameStartData.selectedParticipants;
             },
             error =>
             {
@@ -88,7 +150,7 @@ public class GameManager : MonoBehaviour
         );
     }
 
-     private Color ParseRGBColor(string rgbColor)
+    private Color ParseRGBColor(string rgbColor)
     {
         Regex regex = new Regex(@"rgb\((\d+),\s*(\d+),\s*(\d+)\)");
         Match match = regex.Match(rgbColor);
@@ -107,34 +169,8 @@ public class GameManager : MonoBehaviour
             return Color.white; // Default color in case of error
         }
     }
-    
-    void Start()
-    {
-        OnGameStart();
-        SwingingBall = GameObject.Find("SwingingBall");
-        SwingingBallAnimator = SwingingBall.GetComponent<Animator>();
-        SwingingBallAnimator.enabled = false;
 
-        glassRoomOne = GameObject.Find("GlassRoomOne");
-        glassRoomTwo = GameObject.Find("GlassRoomTwo");
 
-        glassRoomOne.SetActive(false);
-        glassRoomTwo.SetActive(false);
-
-        yBot = GameObject.Find("YBot");
-        xBot = GameObject.Find("XBot");
-        yAvatar = GameObject.Find("YAvatar");
-        xAvatar = GameObject.Find("XAvatar");
-        leftHandModel = GameObject.Find("LeftHandModel");
-        rightHandModel = GameObject.Find("RightHandModel");
-
-        yAvatar.SetActive(false);
-        xAvatar.SetActive(false);
-
-        timerText = GameObject.Find("TimerText").GetComponent<TextMeshProUGUI>();
-        CollectWallPaintRenderers();
-        StartPhase(currentPhase);
-    }
 
     void Update()
     {
@@ -184,6 +220,26 @@ public class GameManager : MonoBehaviour
         }
         if (phaseIndex == 2)
         {
+
+            var localPlayer = GetLocalNetworkPlayerStats();
+            if (localPlayer != null)
+            {
+                int playerId = (int)localPlayer.OwnerClientId - 1;
+                if (playerId >= 0 && playerId < SelectedParticipants.Count)
+                {
+                    email = SelectedParticipants[playerId].email;
+                    Debug.Log("Player email: " + email);
+                }
+                else
+                {
+                    Debug.LogError("Player ID out of range for selected participants.");
+                }
+            }
+            else
+            {
+                Debug.LogError("Local player not found.");
+            }
+
             AudioController.Instance.PlaySound();
         }
         if (phaseIndex == 3)
@@ -215,6 +271,15 @@ public class GameManager : MonoBehaviour
                 player.transform.position = targetPosition;
                 i++;
             }
+        }
+        else if (phaseIndex == 6)
+        {
+            questionsCanvas.SetActive(true);
+            leftHand.GetComponent<LineRenderer>().enabled = true;
+            rightHand.GetComponent<LineRenderer>().enabled = true;
+
+            leftHand.GetComponent<XRInteractorLineVisual>().enabled = true;
+            rightHand.GetComponent<XRInteractorLineVisual>().enabled = true;
         }
     }
 
@@ -321,7 +386,7 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private NetworkPlayerStats GetLocalNetworkPlayerStats()
+    private static NetworkPlayerStats GetLocalNetworkPlayerStats()
     {
         // Logic to get the local NetworkPlayerStats instance
         return FindObjectOfType<NetworkPlayerStats>();
@@ -336,9 +401,11 @@ public class GameManager : MonoBehaviour
     }
 }
 
-internal class GameStartData
+[System.Serializable]
+public class GameStartData
 {
-    public float[] phaseDuration;
+    public string uniqueId;
+    public float phaseDuration;
     public int historyLength;
     public float rateOfTesting;
     public int highSync;
@@ -346,4 +413,15 @@ internal class GameStartData
     public string highSyncColor;
     public string midSyncColor;
     public string lowSyncColor;
+    public List<Participant> selectedParticipants;
+}
+
+[System.Serializable]
+public class Participant
+{
+    public string _id;
+    public string name;
+    public string email;
+    public string sex;
+    public string lastExperience;
 }

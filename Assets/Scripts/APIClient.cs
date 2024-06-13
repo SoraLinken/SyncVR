@@ -47,6 +47,29 @@ public static class APIClient
         }
     }
 
+    public static IEnumerator PutRequest(string endpoint, string jsonData, System.Action<string> onSuccess, System.Action<string> onError)
+    {
+        using (UnityWebRequest webRequest = new UnityWebRequest(baseUrl + endpoint, "PUT"))
+        {
+            byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonData);
+            webRequest.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            webRequest.downloadHandler = new DownloadHandlerBuffer();
+            webRequest.SetRequestHeader("Content-Type", "application/json");
+
+            yield return webRequest.SendWebRequest();
+
+            if (webRequest.result == UnityWebRequest.Result.Success)
+            {
+                onSuccess?.Invoke(webRequest.downloadHandler.text);
+            }
+            else
+            {
+                onError?.Invoke(webRequest.error);
+            }
+        }
+    }
+
+
     public static IEnumerator DeleteRequest(string endpoint, System.Action<string> onSuccess, System.Action<string> onError)
     {
         using (UnityWebRequest webRequest = UnityWebRequest.Delete(baseUrl + endpoint))

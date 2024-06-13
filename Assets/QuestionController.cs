@@ -4,6 +4,27 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+
+[System.Serializable]
+public class QuestionnaireData
+{
+    public string uniqueId;
+    public int[] answers;
+    public string email;
+    public SyncronizationDatum[] synchronizationHands;
+    public SyncronizationDatum[] synchronizationPendulum;
+
+    public QuestionnaireData(string uniqueId, List<int> answers, string email, List<SyncronizationDatum> synchronizationHands, List<SyncronizationDatum> synchronizationPendulum)
+    {
+        this.uniqueId = uniqueId;
+        this.answers = answers.ToArray();
+        this.email = email;
+        this.synchronizationHands = synchronizationHands.ToArray();
+        this.synchronizationPendulum = synchronizationPendulum.ToArray();
+    }
+}
+
+
 public class QuestionController : MonoBehaviour
 {
     public Slider slider;
@@ -31,7 +52,7 @@ public class QuestionController : MonoBehaviour
         "Did you notice any issues with the communication network during the activity?"
     };
 
-    public List<int> answeredQuestions = new List<int>();
+    public List<int> answers = new List<int>();
 
     void Start()
     {
@@ -48,12 +69,23 @@ public class QuestionController : MonoBehaviour
 
     void OnQuestionnaireFinished()
     {
-        Debug.Log("Questionnaire finished. Answers: " + string.Join(", ", answeredQuestions));
+        QuestionnaireData data = new QuestionnaireData(GameManager.uniqueId, answers, GameManager.email, SynchronizationManager.synchronizationHands, SynchronizationManager.synchronizationPendulum);
+        string jsonData = JsonUtility.ToJson(data);
+
+        StartCoroutine(APIClient.PutRequest("/on-game-finish", jsonData, (response) =>
+        {
+            Debug.Log("Questionnaire finished. Answers: " + string.Join(", ", answers));
+        }, (error) =>
+        {
+            Debug.LogError("Error submitting questionnaire: " + error);
+        }));
+
+        GameManager.questionsCanvas.SetActive(false);
     }
 
     void OnNextButtonClick()
     {
-        answeredQuestions.Add((int)slider.value);
+        answers.Add((int)slider.value);
 
         questionIndex++;
 
@@ -69,7 +101,7 @@ public class QuestionController : MonoBehaviour
         }
         else
         {
-           OnQuestionnaireFinished();
+            OnQuestionnaireFinished();
         }
     }
 }

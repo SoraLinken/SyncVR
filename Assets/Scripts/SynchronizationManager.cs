@@ -8,6 +8,21 @@ using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using TMPro;
 
+
+[System.Serializable]
+public struct SyncronizationDatum
+{
+    public float value;
+    public float time;
+
+    public SyncronizationDatum(float value, float time)
+    {
+        this.value = value;
+        this.time = time;
+    }
+}
+
+
 public class SynchronizationManager : MonoBehaviour
 {
     private Dictionary<ulong, Dictionary<string, Queue<(Vector3 position, Quaternion rotation)>>> history =
@@ -19,6 +34,8 @@ public class SynchronizationManager : MonoBehaviour
         new Dictionary<string, Queue<(Vector3 position, Quaternion rotation)>>();
 
 
+    public static List<SyncronizationDatum> synchronizationHands = new List<SyncronizationDatum>();
+    public static List<SyncronizationDatum> synchronizationPendulum = new List<SyncronizationDatum>();
 
     void Start()
     {
@@ -180,6 +197,14 @@ public class SynchronizationManager : MonoBehaviour
             // UpdateSyncPercentageUI(Math.Max(0, syncScore));
         }
 
+        if (GameManager.currentPhase == 3)
+        {
+            synchronizationHands.Add(new SyncronizationDatum((float)syncScore, Time.time));
+        }
+        else if (GameManager.currentPhase == 5)
+        {
+            synchronizationPendulum.Add(new SyncronizationDatum((float)syncScore, Time.time));
+        }
         GameManager.ChangeWallPaintColorBasedOnNumber((int)syncScore);
     }
 
