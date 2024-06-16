@@ -1001,7 +1001,6 @@ GameObject:
   - component: {fileID: 8744629176392899403}
   - component: {fileID: 85717832210582816}
   - component: {fileID: 7402191478717540560}
-  - component: {fileID: 6941385861650946730}
   m_Layer: 0
   m_Name: NetworkPlayer
   m_TagString: Player
@@ -1041,7 +1040,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 1114068118
+  GlobalObjectIdHash: 2561073759
   InScenePlacedSourceGlobalObjectIdHash: 0
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
@@ -1062,28 +1061,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 48f4ba64d7b9dcb4d80f108edce0421b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  xAvatar: {fileID: 7193459232343743485}
+  yAvatar: {fileID: 6954572240627884496}
   root: {fileID: 8744629176392899403}
   head: {fileID: 2522379484275096746}
   leftHand: {fileID: 6928024975840485429}
   rightHand: {fileID: 9223274934265149734}
---- !u!114 &6941385861650946730
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5132023180755927089}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2e62b885b3922f548b50a0e4ec2ab1ad, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  avatarType:
-    m_InternalValue: 0
-  currentPhase:
-    m_InternalValue: 0
-  yAvatarNetwork: {fileID: 6954572240627884496}
-  xAvatarNetwork: {fileID: 7193459232343743485}
 --- !u!1 &5389008340707537417
 GameObject:
   m_ObjectHideFlags: 0

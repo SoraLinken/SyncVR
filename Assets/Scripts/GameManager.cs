@@ -9,6 +9,7 @@ using UnityEngine.XR.Interaction.Toolkit;
 
 public class GameManager : MonoBehaviour
 {
+    public static GameManager Instance { get; private set; }
     public static GameObject SwingingBall;
     public static Animator SwingingBallAnimator;
     public static GameObject yBot;
@@ -24,6 +25,9 @@ public class GameManager : MonoBehaviour
     public static GameObject glassRoomOne;
 
     public static GameObject questionsCanvas;
+    public static GameObject chooseSessionCanvas;
+
+    public static GameObject choosePlayerCanvas;
 
     public static GameObject glassRoomTwo;
 
@@ -37,9 +41,9 @@ public class GameManager : MonoBehaviour
     public static AvatarType avatarType = AvatarType.Hands;
 
     public TextMeshProUGUI timerText;
-    public static float[] phaseDurations = { 15f, 0f, 4f, 60f, 4f, 60f, 0f };
+    public static float[] phaseDurations = { 5f, 0f, 4f, 60f, 4f, 60f, 0f };
     public static int currentPhase = 0;
-    public static float timeRemaining;
+    public static float timeRemaining = 0;
     public static List<Renderer> wallPaintRenderers = new List<Renderer>();
 
     public static Color highSyncColor = Color.white;
@@ -56,19 +60,20 @@ public class GameManager : MonoBehaviour
 
     public static string email = "";
 
-    public static List<Participant> SelectedParticipants;
+    public static int sessionId = 1;
+    public static bool gameStarted = false;
+
+    public static List<Participant> selectedParticipants;
 
     void Start()
     {
-        OnGameStart();
+        Instance = this;
         SwingingBall = GameObject.Find("SwingingBall");
         SwingingBallAnimator = SwingingBall.GetComponent<Animator>();
         SwingingBallAnimator.enabled = false;
 
         glassRoomOne = GameObject.Find("GlassRoomOne");
         glassRoomTwo = GameObject.Find("GlassRoomTwo");
-
-   
 
         glassRoomOne.SetActive(false);
         glassRoomTwo.SetActive(false);
@@ -85,45 +90,63 @@ public class GameManager : MonoBehaviour
         questionsCanvas = GameObject.Find("QuestionsCanvas");
         questionsCanvas.SetActive(false);
 
-        leftHand.GetComponent<LineRenderer>().enabled = false;
-        rightHand.GetComponent<LineRenderer>().enabled = false;
+        chooseSessionCanvas = GameObject.Find("ChooseSessionCanvas");
+        chooseSessionCanvas.SetActive(false);
 
-        leftHand.GetComponent<XRInteractorLineVisual>().enabled = false;
-        rightHand.GetComponent<XRInteractorLineVisual>().enabled = false;
+        choosePlayerCanvas = GameObject.Find("ChoosePlayerCanvas");
+        choosePlayerCanvas.SetActive(false);
 
 
-
+        DisableLasers();
         yAvatar.SetActive(false);
         xAvatar.SetActive(false);
 
         timerText = GameObject.Find("TimerText").GetComponent<TextMeshProUGUI>();
         CollectWallPaintRenderers();
-        StartPhase(currentPhase);
     }
 
-    void OnGameStart()
+    static void DisableLasers()
     {
-        // uniqueId: string
-        // createdByEmail: string
-        // createdBy: string
-        // selectedParticipants: Participant[]
-        // phaseDuration: number
-        // historyLength: number
-        // rateOfTesting: number
-        // highSync: number
-        // lowSync: number
-        // date: Date
-        // experienceType: ExperienceType[]
-        // pendulumRotation: number
-        // highSyncColor: string
-        // midSyncColor: string
-        // lowSyncColor: string
-        // sessionId: string
+        leftHand.GetComponent<LineRenderer>().enabled = false;
+        rightHand.GetComponent<LineRenderer>().enabled = false;
 
+        leftHand.GetComponent<XRInteractorLineVisual>().enabled = false;
+        rightHand.GetComponent<XRInteractorLineVisual>().enabled = false;
+    }
 
+    static void EnableLasers()
+    {
+        leftHand.GetComponent<LineRenderer>().enabled = true;
+        rightHand.GetComponent<LineRenderer>().enabled = true;
 
-        string sessionId = "1";
-        StartCoroutine(
+        leftHand.GetComponent<XRInteractorLineVisual>().enabled = true;
+        rightHand.GetComponent<XRInteractorLineVisual>().enabled = true;
+    }
+
+    public void OnPlayerChosen()
+    {
+        choosePlayerCanvas.SetActive(false);
+        StartPhase(currentPhase);
+        DisableLasers();
+        gameStarted = true;
+
+        AvatarDeclaration data = new AvatarDeclaration(uniqueId, (int)avatarType, email);
+        string jsonData = JsonUtility.ToJson(data);
+
+        StartCoroutine(APIClient.PutRequest("/avatars", jsonData, (response) =>
+        {
+            Debug.Log("Avatar set succesfully");
+        }, (error) =>
+        {
+            Debug.LogError("Error submitting questionnaire: " + error);
+        }));
+    }
+
+    public System.Collections.IEnumerator OnSessionPicked(int newSessionId)
+    {
+        sessionId = newSessionId;
+        Debug.Log("Session ID: " + sessionId);
+        yield return StartCoroutine(
             APIClient.GetRequest($"/on-game-start?sessionId={sessionId}",
             data =>
             {
@@ -141,13 +164,17 @@ public class GameManager : MonoBehaviour
                 lowSyncColor = ParseRGBColor(gameStartData.lowSyncColor);
 
                 // Store the selected participants
-                SelectedParticipants = gameStartData.selectedParticipants;
+                selectedParticipants = gameStartData.selectedParticipants;
             },
             error =>
             {
                 Debug.Log("Error getting game start data:" + error);
             })
         );
+       
+        chooseSessionCanvas.SetActive(false);
+        choosePlayerCanvas.SetActive(true);
+        ChoosePlayerController.Instance.initialize();
     }
 
     private Color ParseRGBColor(string rgbColor)
@@ -174,31 +201,34 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
-        if (timeRemaining > 0)
+        if (gameStarted)
         {
-            timeRemaining -= Time.deltaTime;
-            UpdateTimerDisplay(timeRemaining);
-        }
-        else
-        {
-            timeRemaining = 0;
-            UpdateTimerDisplay(timeRemaining);
-            // Debug.Log("Phase: " + currentPhase);
-            // Debug.Log("Count: " + SynchronizationManager.networkPlayers.Count);
-            if (currentPhase == 1)
+            if (timeRemaining > 0)
             {
-                if (SynchronizationManager.networkPlayers.Count >= 2)
-                {
-                    currentPhase++;
-                    StartPhase(currentPhase);
-                }
+                timeRemaining -= Time.deltaTime;
+                UpdateTimerDisplay(timeRemaining);
             }
             else
             {
-                currentPhase++;
-                if (currentPhase < phaseDurations.Length)
+                timeRemaining = 0;
+                UpdateTimerDisplay(timeRemaining);
+                // Debug.Log("Phase: " + currentPhase);
+                // Debug.Log("Count: " + SynchronizationManager.networkPlayers.Count);
+                if (currentPhase == 1)
                 {
-                    StartPhase(currentPhase);
+                    if (SynchronizationManager.networkPlayers.Count >= 2)
+                    {
+                        currentPhase++;
+                        StartPhase(currentPhase);
+                    }
+                }
+                else
+                {
+                    currentPhase++;
+                    if (currentPhase < phaseDurations.Length)
+                    {
+                        StartPhase(currentPhase);
+                    }
                 }
             }
         }
@@ -220,32 +250,39 @@ public class GameManager : MonoBehaviour
         }
         if (phaseIndex == 2)
         {
+            Debug.Log("Phase 2 started");
+            try
+            {
+                // var localPlayer = GetLocalNetworkPlayerStats();
+                // if (localPlayer != null)
+                // {
+                //     int playerId = (int)localPlayer.OwnerClientId - 1;
+                //     if (playerId >= 0 && playerId < selectedParticipants.Count)
+                //     {
+                //         email = selectedParticipants[playerId].email;
+                //         Debug.Log("Player email: " + email);
+                //     }
+                //     else
+                //     {
+                //         Debug.LogError("Player ID out of range for selected participants.");
+                //     }
+                // }
+                // else
+                // {
+                //     Debug.LogError("Local player not found.");
+                // }
+            }
+            catch (System.Exception e)
+            {
+                Debug.Log(e);
+            }
 
-            var localPlayer = GetLocalNetworkPlayerStats();
-            if (localPlayer != null)
-            {
-                int playerId = (int)localPlayer.OwnerClientId - 1;
-                if (playerId >= 0 && playerId < SelectedParticipants.Count)
-                {
-                    email = SelectedParticipants[playerId].email;
-                    Debug.Log("Player email: " + email);
-                }
-                else
-                {
-                    Debug.LogError("Player ID out of range for selected participants.");
-                }
-            }
-            else
-            {
-                Debug.LogError("Local player not found.");
-            }
 
             AudioController.Instance.PlaySound();
         }
         if (phaseIndex == 3)
         {
             Debug.Log("Phase 2 started");
-            PrintAllPlayersAvatarType();
         }
         else if (phaseIndex == 4)
         {
@@ -274,12 +311,11 @@ public class GameManager : MonoBehaviour
         }
         else if (phaseIndex == 6)
         {
+            glassRoomOne.SetActive(false);
+            glassRoomTwo.SetActive(false);
+            SwingingBallAnimator.enabled = false;
             questionsCanvas.SetActive(true);
-            leftHand.GetComponent<LineRenderer>().enabled = true;
-            rightHand.GetComponent<LineRenderer>().enabled = true;
-
-            leftHand.GetComponent<XRInteractorLineVisual>().enabled = true;
-            rightHand.GetComponent<XRInteractorLineVisual>().enabled = true;
+            EnableLasers();
         }
     }
 
@@ -296,6 +332,7 @@ public class GameManager : MonoBehaviour
         // Return the center of the bounds
         return bounds.center;
     }
+
     void UpdateTimerDisplay(float timeToDisplay)
     {
         if (timerText)
@@ -375,28 +412,28 @@ public class GameManager : MonoBehaviour
         DisableAvatar(rightHandModel);
     }
 
-    public void SetAvatarType(AvatarType newAvatarType)
+    public static void SetAvatarType(AvatarType newAvatarType)
     {
         avatarType = newAvatarType;
-
-        NetworkPlayerStats localPlayer = GetLocalNetworkPlayerStats();
-        if (localPlayer != null && localPlayer.IsOwner)
+        chooseSessionCanvas.SetActive(true);
+        EnableLasers();
+        if (avatarType == AvatarType.YBot)
         {
-            localPlayer.SetAvatarType(newAvatarType);
+            DisableAvatar(xBot);
+            DisableAvatar(yBot);
+            EnableAvatar(yAvatar);
+            DisableAvatar(xAvatar);
+            DisableAvatar(leftHandModel);
+            DisableAvatar(rightHandModel);
         }
-    }
-
-    private static NetworkPlayerStats GetLocalNetworkPlayerStats()
-    {
-        // Logic to get the local NetworkPlayerStats instance
-        return FindObjectOfType<NetworkPlayerStats>();
-    }
-
-    static public void PrintAllPlayersAvatarType()
-    {
-        foreach (var player in FindObjectsOfType<NetworkPlayerStats>())
+        else if (avatarType == AvatarType.XBot)
         {
-            Debug.Log($"Player {player.OwnerClientId} has avatar type: {player.avatarType.Value}");
+            DisableAvatar(yBot);
+            DisableAvatar(xBot);
+            DisableAvatar(yAvatar);
+            EnableAvatar(xAvatar);
+            DisableAvatar(leftHandModel);
+            DisableAvatar(rightHandModel);
         }
     }
 }
@@ -424,4 +461,21 @@ public class Participant
     public string email;
     public string sex;
     public string lastExperience;
+}
+
+
+
+[System.Serializable]
+public class AvatarDeclaration
+{
+    public string uniqueId;
+    public int avatarType;
+    public string email;
+
+    public AvatarDeclaration(string uniqueId, int avatarType, string email)
+    {
+        this.uniqueId = uniqueId;
+        this.avatarType = avatarType;
+        this.email = email;
+    }
 }

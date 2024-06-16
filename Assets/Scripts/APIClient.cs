@@ -6,7 +6,7 @@ using UnityEngine.Networking;
 
 public static class APIClient
 {
-    private const string baseUrl = "http://34.44.201.24:8080/api";
+    private const string baseUrl = "https://syncvr-64a86456e911.herokuapp.com/api";
 
     public static IEnumerator GetRequest(string endpoint, System.Action<string> onSuccess, System.Action<string> onError)
     {
@@ -85,10 +85,5 @@ public static class APIClient
                 onError?.Invoke(webRequest.error);
             }
         }
-    }
-
-    internal static void PostRequest(char v)
-    {
-        throw new NotImplementedException();
     }
 }

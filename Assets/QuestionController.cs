@@ -11,10 +11,10 @@ public class QuestionnaireData
     public string uniqueId;
     public int[] answers;
     public string email;
-    public SyncronizationDatum[] synchronizationHands;
-    public SyncronizationDatum[] synchronizationPendulum;
+    public SynchronizationDatum[] synchronizationHands;
+    public SynchronizationDatum[] synchronizationPendulum;
 
-    public QuestionnaireData(string uniqueId, List<int> answers, string email, List<SyncronizationDatum> synchronizationHands, List<SyncronizationDatum> synchronizationPendulum)
+    public QuestionnaireData(string uniqueId, List<int> answers, string email, List<SynchronizationDatum> synchronizationHands, List<SynchronizationDatum> synchronizationPendulum)
     {
         this.uniqueId = uniqueId;
         this.answers = answers.ToArray();
