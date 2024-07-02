@@ -140,9 +140,7 @@ PlayerSettings:
   visionOSBundleVersion: 1.0
   tvOSBundleVersion: 1.0
   bundleVersion: 0.1.0
-  preloadedAssets:
-  - {fileID: 7469956217192635962, guid: ae4de3a945f3b8948b832cb850e76ea9, type: 2}
-  - {fileID: -5684987495369203047, guid: 3d600fd64b34a6446a59e42c8e260418, type: 2}
+  preloadedAssets: []
   metroInputSource: 0
   wsaTransparentSwapchain: 0
   m_HolographicPauseOnTrackingLoss: 1
@@ -805,9 +803,23 @@ PlayerSettings:
   webGLMemoryGeometricGrowthCap: 96
   webGLPowerPreference: 2
   scriptingDefineSymbols:
-    Android: USE_INPUT_SYSTEM_POSE_CONTROL;USE_INPUT_SYSTEM_POSE_CONTROL;USE_INPUT_SYSTEM_POSE_CONTROL;USE_INPUT_SYSTEM_POSE_CONTROL
-    Standalone: USE_INPUT_SYSTEM_POSE_CONTROL
-    Windows Store Apps: USE_INPUT_SYSTEM_POSE_CONTROL;USE_INPUT_SYSTEM_POSE_CONTROL;USE_INPUT_SYSTEM_POSE_CONTROL;USE_INPUT_SYSTEM_POSE_CONTROL
+    Android: USE_INPUT_SYSTEM_POSE_CONTROL;USE_INPUT_SYSTEM_POSE_CONTROL;USE_INPUT_SYSTEM_POSE_CONTROL;USE_INPUT_SYSTEM_POSE_CONTROL;READY_PLAYER_ME
+    EmbeddedLinux: READY_PLAYER_ME
+    GameCoreScarlett: READY_PLAYER_ME
+    GameCoreXboxOne: READY_PLAYER_ME
+    LinuxHeadlessSimulation: READY_PLAYER_ME
+    Nintendo Switch: READY_PLAYER_ME
+    PS4: READY_PLAYER_ME
+    PS5: READY_PLAYER_ME
+    QNX: READY_PLAYER_ME
+    Stadia: READY_PLAYER_ME
+    Standalone: USE_INPUT_SYSTEM_POSE_CONTROL;READY_PLAYER_ME
+    VisionOS: READY_PLAYER_ME
+    WebGL: READY_PLAYER_ME
+    Windows Store Apps: USE_INPUT_SYSTEM_POSE_CONTROL;USE_INPUT_SYSTEM_POSE_CONTROL;USE_INPUT_SYSTEM_POSE_CONTROL;USE_INPUT_SYSTEM_POSE_CONTROL;READY_PLAYER_ME
+    XboxOne: READY_PLAYER_ME
+    iPhone: READY_PLAYER_ME
+    tvOS: READY_PLAYER_ME
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend:

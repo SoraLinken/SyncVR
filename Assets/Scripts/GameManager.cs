@@ -1,10 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
-using Unity.Netcode;
 using System.Text.RegularExpressions;
 using UnityEngine.XR.Interaction.Toolkit;
-
 
 
 public class GameManager : MonoBehaviour
@@ -97,9 +95,9 @@ public class GameManager : MonoBehaviour
         choosePlayerCanvas.SetActive(false);
 
 
-        DisableLasers();
         yAvatar.SetActive(false);
         xAvatar.SetActive(false);
+        DisableLasers();
 
         timerText = GameObject.Find("TimerText").GetComponent<TextMeshProUGUI>();
         CollectWallPaintRenderers();
@@ -107,17 +105,17 @@ public class GameManager : MonoBehaviour
 
     static void DisableLasers()
     {
-        leftHand.GetComponent<LineRenderer>().enabled = false;
-        rightHand.GetComponent<LineRenderer>().enabled = false;
+        // leftHand.GetComponent<LineRenderer>().enabled = false;
+        // rightHand.GetComponent<LineRenderer>().enabled = false;
 
-        leftHand.GetComponent<XRInteractorLineVisual>().enabled = false;
-        rightHand.GetComponent<XRInteractorLineVisual>().enabled = false;
+        // leftHand.GetComponent<XRInteractorLineVisual>().enabled = false;
+        // rightHand.GetComponent<XRInteractorLineVisual>().enabled = false;
     }
 
     static void EnableLasers()
     {
-        leftHand.GetComponent<LineRenderer>().enabled = true;
-        rightHand.GetComponent<LineRenderer>().enabled = true;
+        // leftHand.GetComponent<LineRenderer>().enabled = true;
+        // rightHand.GetComponent<LineRenderer>().enabled = true;
 
         leftHand.GetComponent<XRInteractorLineVisual>().enabled = true;
         rightHand.GetComponent<XRInteractorLineVisual>().enabled = true;
