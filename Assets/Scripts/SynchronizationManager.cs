@@ -7,7 +7,7 @@ using System;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using TMPro;
-
+using UnityEngine.XR;
 
 [System.Serializable]
 public struct SynchronizationDatum
@@ -25,6 +25,7 @@ public struct SynchronizationDatum
 
 public class SynchronizationManager : MonoBehaviour
 {
+    private const int TargetSampleSize = 1000;
     private Dictionary<ulong, Dictionary<string, Queue<(Vector3 position, Quaternion rotation)>>> history =
         new Dictionary<ulong, Dictionary<string, Queue<(Vector3 position, Quaternion rotation)>>>();
 
@@ -37,10 +38,68 @@ public class SynchronizationManager : MonoBehaviour
     public static List<SynchronizationDatum> synchronizationHands = new List<SynchronizationDatum>();
     public static List<SynchronizationDatum> synchronizationPendulum = new List<SynchronizationDatum>();
 
+
+    private bool headHit = false;
     void Start()
     {
         InvokeRepeating("UpdateNetworkPlayers", 0f, GameManager.rateOfTesting);
     }
+
+
+    static public List<SynchronizationDatum> NormalizeListSize(List<SynchronizationDatum> originalList)
+    {
+        if (originalList.Count == TargetSampleSize)
+        {
+            return originalList;
+        }
+
+        var normalizedList = new List<SynchronizationDatum>();
+
+        if (originalList.Count < TargetSampleSize)
+        {
+            // Interpolation
+            for (int i = 0; i < TargetSampleSize; i++)
+            {
+                float t = i / (float)(TargetSampleSize - 1);
+                var interpolated = Interpolate(originalList, t);
+                normalizedList.Add(interpolated);
+            }
+        }
+        else
+        {
+            // Downsampling
+            for (int i = 0; i < TargetSampleSize; i++)
+            {
+                float t = i / (float)(TargetSampleSize - 1);
+                int index = Mathf.RoundToInt(t * (originalList.Count - 1));
+                normalizedList.Add(originalList[index]);
+            }
+        }
+
+        return normalizedList;
+    }
+
+    static SynchronizationDatum Interpolate(List<SynchronizationDatum> list, float t)
+    {
+        int count = list.Count - 1;
+        float scaledT = t * count;
+        int index = Mathf.FloorToInt(scaledT);
+        float fraction = scaledT - index;
+
+        if (index >= count)
+        {
+            return list[count];
+        }
+
+        var start = list[index];
+        var end = list[index + 1];
+
+        var interpolatedValue = Mathf.Lerp(start.value, end.value, fraction);
+        var interpolatedTime = Mathf.Lerp(start.time, end.time, fraction);
+
+        return new SynchronizationDatum(interpolatedValue, interpolatedTime);
+    }
+
 
     void UpdateNetworkPlayers()
     {
@@ -90,124 +149,179 @@ public class SynchronizationManager : MonoBehaviour
 
     void CheckSynchronization()
     {
-        if (networkPlayers.Count < 2)
+        if ((GameManager.currentPhase != (int)Phase.Synchronization && GameManager.currentPhase != (int)Phase.SwingingBall) || networkPlayers.Count < 2)
         {
-            // UpdateSyncPercentageUI(0); // No comparison possible, set synchronization to 0%
+            // Debug.Log("Not in synchronization phase or not enough players");
+            GameManager.ChangeWallPaintColorFunction(Color.white);
             return;
         }
-
-        double syncScore = 0;
-        if (GameManager.currentPhase == 5)
+        float pendulumRotationZ = GameManager.Pendulum.transform.rotation.eulerAngles.z;
+        if (GameManager.currentPhase == (int)Phase.SwingingBall)
         {
-            double totalHeightDifference = 0;
-            int comparisons = 0;
-            const double heightScale = 100.0;
-
-            for (int i = 0; i < networkPlayers.Count; i++)
+            if (pendulumRotationZ > 180)
             {
-                for (int j = i + 1; j < networkPlayers.Count; j++)
-                {
-                    Transform headTransform1 = FindChildWithTag(networkPlayers[i].transform, "HeadTarget");
-                    Transform headTransform2 = FindChildWithTag(networkPlayers[j].transform, "HeadTarget");
-
-                    if (headTransform1 != null && headTransform2 != null)
-                    {
-                        double heightDifference = Math.Abs(headTransform1.position.y - headTransform2.position.y);
-                        totalHeightDifference += heightDifference;
-                        comparisons++;
-                    }
-                }
+                pendulumRotationZ -= 360;
             }
 
-            if (comparisons > 0)
+            if (pendulumRotationZ < 30 && pendulumRotationZ > -30)
             {
-                // Calculate sync score based on height differences
-                syncScore = 100 - (totalHeightDifference / comparisons) * heightScale;
+                GetPendulumSynchronization();
             }
             else
             {
-                syncScore = 0; // No valid comparisons
+                headHit = false;
             }
-
-            syncScore = Math.Max(0, syncScore); // Ensure the score is non-negative
         }
         else
         {
-            double totalDifference = 0;
-            int comparisons = 0;
+            GetHandSynchronization();
+            // UpdateSyncPercentageUI(Math.Max(0, syncScore));
+        }
+    }
 
-            const double positionScale = 80.0;
-            const double rotationScale = 15.0;
-            const double positionNormalizer = 0.915;
-            const double rotationNormalizer = 0.800;
-            const double epsilon = 1e-6;
 
-            for (int i = 0; i < networkPlayers.Count; i++)
+    double GetPendulumSynchronization()
+    {
+        double syncScore = 0;
+
+        PendulumCollisionDetection pendulumCollision = GameManager.Pendulum.GetComponent<PendulumCollisionDetection>();
+
+        if (pendulumCollision.IsOverRug())
+        {
+            Debug.Log("Ball is above the rug");
+            if (headHit)
             {
-                for (int j = i + 1; j < networkPlayers.Count; j++)
-                {
-                    ulong id1 = networkPlayers[i].NetworkObjectId;
-                    ulong id2 = networkPlayers[j].NetworkObjectId;
-
-                    foreach (var tag in history[id1].Keys)
-                    {
-                        if (!history[id1].ContainsKey(tag) || !history[id2].ContainsKey(tag)) continue;
-
-                        var queue1 = history[id1][tag];
-                        var queue2 = history[id2][tag];
-                        if (queue1.Count == 0 || queue2.Count == 0) continue;
-
-                        double averagePositionDifference = 0;
-                        double averageRotationDifference = 0;
-
-                        var array1 = queue1.ToArray();
-                        var array2 = queue2.ToArray();
-                        int count = Math.Min(array1.Length, array2.Length);
-
-                        for (int k = 0; k < count; k++)
-                        {
-                            double positionDiff = Vector3.Distance(array1[k].position, array2[k].position);
-                            double rotationDiff = Quaternion.Angle(array1[k].rotation, array2[k].rotation) / 180.0;
-                            // Debug.Log($"Position Difference: {positionDiff}, Rotation Difference: {rotationDiff}");
-                            // Safeguarding the power calculation to avoid negative inputs
-                            averagePositionDifference += Math.Max(0, Math.Pow(positionNormalizer + positionDiff, 7) - positionNormalizer);
-                            averageRotationDifference += Math.Max(0, Math.Pow(rotationNormalizer + rotationDiff, 4) - rotationNormalizer);
-                        }
-
-                        averagePositionDifference /= count;
-                        averageRotationDifference /= count;
-
-                        totalDifference += (averagePositionDifference * positionScale) + (averageRotationDifference * rotationScale);
-                    }
-                    comparisons++;
-                }
+                syncScore = 0;
             }
-
-
-            if (comparisons > 0)
+            else if (pendulumCollision.IsCollidingWithHead())
             {
-                // Ensure that the denominator is never zero
-                syncScore = 100 - Math.Sqrt(Math.Max(0, totalDifference / comparisons + epsilon));
+                headHit = true;
+                StartVibration();
+                syncScore = 0;
             }
             else
             {
-                syncScore = 0; // No valid comparisons
+                syncScore = 100;
             }
 
-            // UpdateSyncPercentageUI(Math.Max(0, syncScore));
+            synchronizationPendulum.Add(new SynchronizationDatum((float)syncScore, GameManager.timeRemaining));
+            GameManager.ChangeWallPaintColorBasedOnNumber((int)syncScore);
+            return syncScore;
+        }
+        return 0;
+    }
+
+
+
+
+
+
+    void StartVibration()
+    {
+        HapticCapabilities capabilities;
+        InputDevice device = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
+        if (device.TryGetHapticCapabilities(out capabilities) && capabilities.supportsImpulse)
+        {
+            uint channel = 0;
+            device.SendHapticImpulse(channel, 1.0f, 1.0f); // Send vibration for 1 second
+            Invoke("StopVibration", 1.0f); // Stop vibration after 1 second
+        }
+    }
+
+    void StopVibration()
+    {
+        InputDevice device = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
+        device.StopHaptics();
+    }
+    double GetHandSynchronization()
+    {
+        double syncScore = 0;
+        double totalDifference = 0;
+        int comparisons = 0;
+
+        const double positionNormalizer = 0.97;
+        const double epsilon = 1e-6;
+
+        for (int i = 0; i < networkPlayers.Count; i++)
+        {
+            for (int j = i + 1; j < networkPlayers.Count; j++)
+            {
+                ulong id1 = networkPlayers[i].NetworkObjectId;
+                ulong id2 = networkPlayers[j].NetworkObjectId;
+
+                foreach (var tag in history[id1].Keys)
+                {
+                    if (!history[id1].ContainsKey(tag) || !history[id2].ContainsKey(tag)) continue;
+
+                    var queue1 = NormalizeQueue(history[id1][tag]);
+                    var queue2 = NormalizeQueue(history[id2][tag]);
+                    if (queue1.Count == 0 || queue2.Count == 0) continue;
+
+                    double averagePositionDifference = 0;
+
+                    var array1 = queue1.ToArray();
+                    var array2 = queue2.ToArray();
+                    int count = Math.Min(array1.Length, array2.Length);
+
+                    for (int k = 0; k < count; k++)
+                    {
+                        double positionDiff = Vector3.Distance(array1[k].position, array2[k].position);
+                        averagePositionDifference += Math.Max(0, Math.Pow(positionNormalizer + positionDiff, 12) - positionNormalizer);
+                    }
+
+                    averagePositionDifference /= count;
+
+                    totalDifference += averagePositionDifference;
+                }
+                comparisons++;
+            }
         }
 
-        syncScore = Math.Max(0, syncScore);
-        if (GameManager.currentPhase == 3)
+
+        if (comparisons > 0)
         {
-            synchronizationHands.Add(new SynchronizationDatum((float)syncScore, GameManager.timeRemaining));
+            syncScore = Math.Max(0, 100 - Math.Sqrt(Math.Max(0, totalDifference / comparisons + epsilon)));
         }
-        else if (GameManager.currentPhase == 5)
+        else
         {
-            synchronizationPendulum.Add(new SynchronizationDatum((float)syncScore, GameManager.timeRemaining));
+            syncScore = 0;
         }
+
+        // Debug.Log(syncScore);
+
+        synchronizationHands.Add(new SynchronizationDatum((float)syncScore, GameManager.timeRemaining));
         GameManager.ChangeWallPaintColorBasedOnNumber((int)syncScore);
+        return syncScore;
     }
+
+
+    Queue<(Vector3 position, Quaternion rotation)> NormalizeQueue(Queue<(Vector3 position, Quaternion rotation)> originalQueue)
+    {
+        var list = originalQueue.ToList();
+        for (int i = 1; i < list.Count - 1; i++)
+        {
+            var prevMove = GetMovement(list[i - 1].position, list[i].position);
+            var nextMove = GetMovement(list[i].position, list[i + 1].position);
+
+            if (prevMove == nextMove)
+            {
+                // Correct the outlier
+                list[i] = ((list[i - 1].position + list[i + 1].position) / 2, list[i].rotation);
+            }
+        }
+        return new Queue<(Vector3 position, Quaternion rotation)>(list);
+    }
+
+    Movement GetMovement(Vector3 previous, Vector3 current)
+    {
+        return current.y > previous.y ? Movement.Up : Movement.Down;
+    }
+    enum Movement
+    {
+        Up,
+        Down
+    }
+
 
     void UpdateSyncPercentageUI(double score)
     {

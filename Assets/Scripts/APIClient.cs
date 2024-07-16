@@ -6,7 +6,7 @@ using UnityEngine.Networking;
 
 public static class APIClient
 {
-    private const string baseUrl = "https://syncvr-64a86456e911.herokuapp.com/api";
+    private const string baseUrl = "https://syncvr-1295f7818a49.herokuapp.com/api";
 
     public static IEnumerator GetRequest(string endpoint, System.Action<string> onSuccess, System.Action<string> onError)
     {

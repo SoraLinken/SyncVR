@@ -41,15 +41,18 @@ public class QuestionController : MonoBehaviour
 
     private string[] questions = new string[]
     {
-        "To what extent did you feel that your movements matched those of your partner?",
-        "To what extent did you feel that you and your partner cooperated?",
-        "Was the cooperation with your partner good?",
-        "Did you feel that you and your partner were synchronized in your movements?",
-        "Did you feel a \"sense of togetherness\" when moving in sync with your partner?",
-        "Did you feel that there was a similarity between you and your partner?",
-        "To what extent would you be open to further cooperation with your partner in a follow-up experiment?",
-        "In a follow-up experiment, would you prefer to continue with this partner over a new partner?",
-        "Did you notice any issues with the communication network during the activity?"
+        "To what extent were your movements in time with the other participant?",
+        "How likable did you find the other participant in the experiment?",
+        "How friendly did you find the other participant in the experiment?",
+        "How dominant did you find the other participant in the experiment?",
+        "Did you experience a feeling of togetherness when moving with the other participant?",
+        "Did you feel your movements were coordinated with the other participant's movements?",
+        "Did you feel you and the other participant were a unit during the task? ",
+        "Did you feel you and the other participant cooperated during the task?",
+        "How close do you currently feel to the other participant in the experiment?",
+        "Did you try to ignore the other participant during the task?",
+        "Did you feel you and the other participant worked together during the task?",
+        "Would you be open to future cooperation with the other participant?"
     };
 
     public List<int> answers = new List<int>();
@@ -69,7 +72,7 @@ public class QuestionController : MonoBehaviour
 
     void OnQuestionnaireFinished()
     {
-        QuestionnaireData data = new QuestionnaireData(GameManager.uniqueId, answers, GameManager.email, SynchronizationManager.synchronizationHands, SynchronizationManager.synchronizationPendulum);
+        QuestionnaireData data = new QuestionnaireData(GameManager.uniqueId, answers, GameManager.email, SynchronizationManager.NormalizeListSize(SynchronizationManager.synchronizationHands), SynchronizationManager.synchronizationPendulum);
         string jsonData = JsonUtility.ToJson(data);
 
         StartCoroutine(APIClient.PutRequest("/on-game-finish", jsonData, (response) =>

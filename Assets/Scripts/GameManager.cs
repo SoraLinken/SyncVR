@@ -3,12 +3,26 @@ using UnityEngine;
 using TMPro;
 using System.Text.RegularExpressions;
 using UnityEngine.XR.Interaction.Toolkit;
+using ReadyPlayerMe.Core.WebView;
 
+public enum Phase
+{
+    SafetyPadding,
+    Initialization,
+    Preparation1,
+    Synchronization,
+
+    Preparation2,
+    SwingingBall,
+    Questionnaire
+}
 
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
     public static GameObject SwingingBall;
+
+    public static GameObject Pendulum;
     public static Animator SwingingBallAnimator;
     public static GameObject yBot;
     public static GameObject xBot;
@@ -23,11 +37,16 @@ public class GameManager : MonoBehaviour
     public static GameObject glassRoomOne;
 
     public static GameObject questionsCanvas;
+
+    public static GameObject portalZone;
     public static GameObject chooseSessionCanvas;
 
     public static GameObject choosePlayerCanvas;
 
     public static GameObject glassRoomTwo;
+
+    public static GameObject rugLeft;
+    public static GameObject rugRight;
 
     public enum AvatarType
     {
@@ -39,10 +58,10 @@ public class GameManager : MonoBehaviour
     public static AvatarType avatarType = AvatarType.Hands;
 
     public TextMeshProUGUI timerText;
-    public static float[] phaseDurations = { 5f, 0f, 4f, 60f, 4f, 60f, 0f };
+
+    public static float[] phaseDurations = { 5f, 0, 4f, 60f, 4f, 60f, 0f };
     public static int currentPhase = 0;
     public static float timeRemaining = 0;
-    public static List<Renderer> wallPaintRenderers = new List<Renderer>();
 
     public static Color highSyncColor = Color.white;
     public static Color midSyncColor = Color.white;
@@ -51,7 +70,7 @@ public class GameManager : MonoBehaviour
     public static int highSync = 70;
     public static int lowSync = 40;
 
-    public static float rateOfTesting = 0.15f; // Update interval in seconds
+    public static float rateOfTesting = 0.03f; // Update interval in seconds
     public static int historyLength = 8; // Maximum history records
 
     public static string uniqueId = "";
@@ -61,6 +80,8 @@ public class GameManager : MonoBehaviour
     public static int sessionId = 1;
     public static bool gameStarted = false;
 
+    public static Renderer colorChangingWallRenderer;
+
     public static List<Participant> selectedParticipants;
 
     void Start()
@@ -69,6 +90,9 @@ public class GameManager : MonoBehaviour
         SwingingBall = GameObject.Find("SwingingBall");
         SwingingBallAnimator = SwingingBall.GetComponent<Animator>();
         SwingingBallAnimator.enabled = false;
+
+
+        Pendulum = GameObject.Find("PendulumBlade");
 
         glassRoomOne = GameObject.Find("GlassRoomOne");
         glassRoomTwo = GameObject.Find("GlassRoomTwo");
@@ -82,40 +106,45 @@ public class GameManager : MonoBehaviour
         xAvatar = GameObject.Find("XAvatar");
         leftHandModel = GameObject.Find("LeftHandModel");
         rightHandModel = GameObject.Find("RightHandModel");
-        leftHand = GameObject.Find("LeftHand");
-        rightHand = GameObject.Find("RightHand");
+        leftHand = GameObject.Find("PlayerLeftHand");
+        rightHand = GameObject.Find("PlayerRightHand");
 
         questionsCanvas = GameObject.Find("QuestionsCanvas");
         questionsCanvas.SetActive(false);
 
+        portalZone = GameObject.Find("PortalZone");
+
+        rugLeft = GameObject.Find("RugLeft");
+        rugRight = GameObject.Find("RugRight");
+        
         chooseSessionCanvas = GameObject.Find("ChooseSessionCanvas");
         chooseSessionCanvas.SetActive(false);
 
         choosePlayerCanvas = GameObject.Find("ChoosePlayerCanvas");
         choosePlayerCanvas.SetActive(false);
 
+        colorChangingWallRenderer = GameObject.Find("ColorChangingWall").GetComponent<Renderer>();
 
         yAvatar.SetActive(false);
         xAvatar.SetActive(false);
         DisableLasers();
 
         timerText = GameObject.Find("TimerText").GetComponent<TextMeshProUGUI>();
-        CollectWallPaintRenderers();
     }
 
     static void DisableLasers()
     {
-        // leftHand.GetComponent<LineRenderer>().enabled = false;
-        // rightHand.GetComponent<LineRenderer>().enabled = false;
+        leftHand.GetComponent<LineRenderer>().enabled = false;
+        rightHand.GetComponent<LineRenderer>().enabled = false;
 
-        // leftHand.GetComponent<XRInteractorLineVisual>().enabled = false;
-        // rightHand.GetComponent<XRInteractorLineVisual>().enabled = false;
+        leftHand.GetComponent<XRInteractorLineVisual>().enabled = false;
+        rightHand.GetComponent<XRInteractorLineVisual>().enabled = false;
     }
 
     static void EnableLasers()
     {
-        // leftHand.GetComponent<LineRenderer>().enabled = true;
-        // rightHand.GetComponent<LineRenderer>().enabled = true;
+        leftHand.GetComponent<LineRenderer>().enabled = true;
+        rightHand.GetComponent<LineRenderer>().enabled = true;
 
         leftHand.GetComponent<XRInteractorLineVisual>().enabled = true;
         rightHand.GetComponent<XRInteractorLineVisual>().enabled = true;
@@ -169,7 +198,7 @@ public class GameManager : MonoBehaviour
                 Debug.Log("Error getting game start data:" + error);
             })
         );
-       
+
         chooseSessionCanvas.SetActive(false);
         choosePlayerCanvas.SetActive(true);
         ChoosePlayerController.Instance.initialize();
@@ -236,9 +265,10 @@ public class GameManager : MonoBehaviour
     {
         timeRemaining = phaseDurations[phaseIndex];
 
-        if (phaseIndex == 1)
+        if (phaseIndex == (int)Phase.Initialization)
         {
-            Debug.Log("Phase 1 started");
+            declarePhaseStart(Phase.Initialization);
+            portalZone.SetActive(false);
             await NetworkConnect.Instance.JoinOrCreate();
             DisableAvatar(yBot);
             DisableAvatar(xBot);
@@ -246,49 +276,23 @@ public class GameManager : MonoBehaviour
             DisableAvatar(xAvatar);
             DisableHands();
         }
-        if (phaseIndex == 2)
+        if (phaseIndex == (int)Phase.Preparation1)
         {
-            Debug.Log("Phase 2 started");
-            try
-            {
-                // var localPlayer = GetLocalNetworkPlayerStats();
-                // if (localPlayer != null)
-                // {
-                //     int playerId = (int)localPlayer.OwnerClientId - 1;
-                //     if (playerId >= 0 && playerId < selectedParticipants.Count)
-                //     {
-                //         email = selectedParticipants[playerId].email;
-                //         Debug.Log("Player email: " + email);
-                //     }
-                //     else
-                //     {
-                //         Debug.LogError("Player ID out of range for selected participants.");
-                //     }
-                // }
-                // else
-                // {
-                //     Debug.LogError("Local player not found.");
-                // }
-            }
-            catch (System.Exception e)
-            {
-                Debug.Log(e);
-            }
-
-
+            declarePhaseStart(Phase.Preparation1);
             AudioController.Instance.PlaySound();
         }
-        if (phaseIndex == 3)
+        if (phaseIndex == (int)Phase.Synchronization)
         {
-            Debug.Log("Phase 2 started");
+            declarePhaseStart(Phase.Synchronization);
         }
-        else if (phaseIndex == 4)
+        else if (phaseIndex == (int)Phase.Preparation2)
         {
-            Debug.Log("Phase 3 started");
+            declarePhaseStart(Phase.Preparation2);
+            AudioController.Instance.PlaySound();
         }
-        else if (phaseIndex == 5)
+        else if (phaseIndex == (int)Phase.SwingingBall)
         {
-            Debug.Log("Phase 4 started");
+            declarePhaseStart(Phase.SwingingBall);
             SwingingBallAnimator.enabled = true;
             glassRoomOne.SetActive(true);
             glassRoomTwo.SetActive(true);
@@ -307,8 +311,9 @@ public class GameManager : MonoBehaviour
                 i++;
             }
         }
-        else if (phaseIndex == 6)
+        else if (phaseIndex == (int)Phase.Questionnaire)
         {
+            declarePhaseStart(Phase.Questionnaire);
             glassRoomOne.SetActive(false);
             glassRoomTwo.SetActive(false);
             SwingingBallAnimator.enabled = false;
@@ -317,6 +322,11 @@ public class GameManager : MonoBehaviour
         }
     }
 
+
+    private static void declarePhaseStart(Phase phaseIndex)
+    {
+        Debug.Log("Phase " + phaseIndex + " started");
+    }
     private static Vector3 CalculateCenter(GameObject room)
     {
         // Calculate the bounds of the room
@@ -342,28 +352,10 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    void CollectWallPaintRenderers()
-    {
-        // Find all renderers in the scene
-        Renderer[] renderers = FindObjectsOfType<Renderer>();
-
-        foreach (Renderer renderer in renderers)
-        {
-            // Check if the material name is "WallPaint"
-            if (renderer.material.name.Contains("WallPaint"))
-            {
-                wallPaintRenderers.Add(renderer);
-            }
-        }
-    }
-
     public static void ChangeWallPaintColorFunction(Color newColor)
     {
-        foreach (Renderer renderer in wallPaintRenderers)
-        {
-            // Change the color of the material
-            renderer.material.color = newColor;
-        }
+        if (colorChangingWallRenderer.material.color == newColor) return;
+        colorChangingWallRenderer.material.color = newColor;
         LightsController.Instance.changeLightColor(newColor);
     }
 
@@ -432,6 +424,26 @@ public class GameManager : MonoBehaviour
             EnableAvatar(xAvatar);
             DisableAvatar(leftHandModel);
             DisableAvatar(rightHandModel);
+        }
+    }
+
+
+    static void LogAllComponents(GameObject gameObject)
+    {
+        if (gameObject == null)
+        {
+            Debug.LogError("GameObject is not assigned.");
+            return;
+        }
+
+        Debug.Log("Logging components for: " + gameObject.name);
+
+        Component[] components = gameObject.GetComponents<Component>();
+        Debug.Log(gameObject.name + " has " + components.Length + " components.");
+
+        foreach (Component component in components)
+        {
+            Debug.Log(gameObject.name + " has component: " + component.GetType().ToString());
         }
     }
 }

@@ -11,6 +11,7 @@ TagManager:
   - SyncCanvas
   - SyncPercentage
   - Character
+  - HeadCollider
   layers:
   - Default
   - TransparentFX
