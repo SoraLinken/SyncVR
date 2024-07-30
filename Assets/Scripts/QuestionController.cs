@@ -33,6 +33,10 @@ public class QuestionController : MonoBehaviour
     public GameObject nextButtonGameObject;
     public GameObject nextButtonTextGameObject;
 
+    public GameObject agreementTextGameObject;
+
+    public GameObject disagreeButtonGameObject;
+
     private TextMeshProUGUI nextButtonText;
     private TextMeshProUGUI pageText;
     private TextMeshProUGUI questionText;
@@ -83,7 +87,22 @@ public class QuestionController : MonoBehaviour
             Debug.LogError("Error submitting questionnaire: " + error);
         }));
 
-        GameManager.questionsCanvas.SetActive(false);
+        nextButtonText.text = "";
+        pageText.text = "";
+
+        nextButtonGameObject.SetActive(false);
+
+        pageTextGameObject.SetActive(false);
+
+        slider.gameObject.SetActive(false);
+
+        agreementTextGameObject.SetActive(false);
+
+        disagreeButtonGameObject.SetActive(false);
+
+        questionText.text = "Thank you for participating!";
+        // GameManager.questionsCanvas.SetActive(false);
+        StartCoroutine(GameManager.QuitGame());
     }
 
     void OnNextButtonClick()

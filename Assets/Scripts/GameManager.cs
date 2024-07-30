@@ -4,6 +4,7 @@ using TMPro;
 using System.Text.RegularExpressions;
 using UnityEngine.XR.Interaction.Toolkit;
 using ReadyPlayerMe.Core.WebView;
+using System.Collections;
 
 public enum Phase
 {
@@ -20,6 +21,18 @@ public enum Phase
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
+
+    public static string[] experienceType;
+    public static bool hasPendulum = false;
+    public static bool hasHands = false;
+
+    public static GameObject SwingingBall180;
+    public static GameObject Pendulum180;
+    public static GameObject SwingingBall360;
+    public static GameObject Pendulum360;
+
+    public static Animator SwingingBallAnimator180;
+    public static Animator SwingingBallAnimator360;
     public static GameObject SwingingBall;
 
     public static GameObject Pendulum;
@@ -44,6 +57,7 @@ public class GameManager : MonoBehaviour
     public static GameObject choosePlayerCanvas;
 
     public static GameObject glassRoomTwo;
+    public static int pendulumRotation;
 
     public static GameObject rugLeft;
     public static GameObject rugRight;
@@ -59,7 +73,7 @@ public class GameManager : MonoBehaviour
 
     public TextMeshProUGUI timerText;
 
-    public static float[] phaseDurations = { 5f, 0, 4f, 60f, 4f, 60f, 0f };
+    public static float[] phaseDurations = { 0, 0, 12f, 60f, 12f, 60f, 0f };
     public static int currentPhase = 0;
     public static float timeRemaining = 0;
 
@@ -87,12 +101,22 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         Instance = this;
-        SwingingBall = GameObject.Find("SwingingBall");
-        SwingingBallAnimator = SwingingBall.GetComponent<Animator>();
-        SwingingBallAnimator.enabled = false;
 
+        SwingingBall180 = GameObject.Find("SwingingBall180");
+        SwingingBallAnimator180 = SwingingBall180.GetComponent<Animator>();
+        Pendulum180 = GameObject.Find("PendulumBlade180");
+        SwingingBallAnimator180.enabled = false;
+        SwingingBall180.SetActive(false);
 
-        Pendulum = GameObject.Find("PendulumBlade");
+        SwingingBall360 = GameObject.Find("SwingingBall360");
+        SwingingBallAnimator360 = SwingingBall360.GetComponent<Animator>();
+        Pendulum360 = GameObject.Find("PendulumBlade360");
+        SwingingBallAnimator360.enabled = false;
+
+        SwingingBall = SwingingBall360;
+        Pendulum = Pendulum360;
+        SwingingBallAnimator = SwingingBallAnimator360;
+
 
         glassRoomOne = GameObject.Find("GlassRoomOne");
         glassRoomTwo = GameObject.Find("GlassRoomTwo");
@@ -116,7 +140,7 @@ public class GameManager : MonoBehaviour
 
         rugLeft = GameObject.Find("RugLeft");
         rugRight = GameObject.Find("RugRight");
-        
+
         chooseSessionCanvas = GameObject.Find("ChooseSessionCanvas");
         chooseSessionCanvas.SetActive(false);
 
@@ -180,6 +204,7 @@ public class GameManager : MonoBehaviour
                 Debug.Log("Game start data: " + data);
                 var gameStartData = JsonUtility.FromJson<GameStartData>(data);
                 uniqueId = gameStartData.uniqueId;
+                experienceType = gameStartData.experienceType;
                 phaseDurations[3] = gameStartData.phaseDuration;
                 phaseDurations[5] = gameStartData.phaseDuration;
                 historyLength = gameStartData.historyLength;
@@ -189,7 +214,7 @@ public class GameManager : MonoBehaviour
                 highSyncColor = ParseRGBColor(gameStartData.highSyncColor);
                 midSyncColor = ParseRGBColor(gameStartData.midSyncColor);
                 lowSyncColor = ParseRGBColor(gameStartData.lowSyncColor);
-
+                pendulumRotation = gameStartData.pendulumRotation;
                 // Store the selected participants
                 selectedParticipants = gameStartData.selectedParticipants;
             },
@@ -199,6 +224,26 @@ public class GameManager : MonoBehaviour
             })
         );
 
+        foreach (string experience in experienceType)
+        {
+            if (experience == "hands")
+            {
+                hasHands = true;
+            }
+            else if (experience == "pendulum")
+            {
+                hasPendulum = true;
+            }
+        }
+
+        if (pendulumRotation == 180)
+        {
+            SwingingBall180.SetActive(true);
+            SwingingBall = SwingingBall180;
+            Pendulum = Pendulum180;
+            SwingingBallAnimator = SwingingBallAnimator180;
+            SwingingBall360.SetActive(false);
+        }
         chooseSessionCanvas.SetActive(false);
         choosePlayerCanvas.SetActive(true);
         ChoosePlayerController.Instance.initialize();
@@ -278,20 +323,44 @@ public class GameManager : MonoBehaviour
         }
         if (phaseIndex == (int)Phase.Preparation1)
         {
+            if(!hasHands)
+            {
+                currentPhase++;
+                StartPhase(currentPhase);
+                return;
+            }
             declarePhaseStart(Phase.Preparation1);
-            AudioController.Instance.PlaySound();
+            // AudioController.Instance.PlaySound();
         }
         if (phaseIndex == (int)Phase.Synchronization)
         {
+            if(!hasHands)
+            {
+                currentPhase++;
+                StartPhase(currentPhase);
+                return;
+            }
             declarePhaseStart(Phase.Synchronization);
         }
         else if (phaseIndex == (int)Phase.Preparation2)
         {
+            if(!hasPendulum)
+            {
+                currentPhase++;
+                StartPhase(currentPhase);
+                return;
+            }
             declarePhaseStart(Phase.Preparation2);
-            AudioController.Instance.PlaySound();
+            // AudioController.Instance.PlaySound();
         }
         else if (phaseIndex == (int)Phase.SwingingBall)
         {
+            if(!hasPendulum)
+            {
+                currentPhase++;
+                StartPhase(currentPhase);
+                return;
+            }
             declarePhaseStart(Phase.SwingingBall);
             SwingingBallAnimator.enabled = true;
             glassRoomOne.SetActive(true);
@@ -446,11 +515,25 @@ public class GameManager : MonoBehaviour
             Debug.Log(gameObject.name + " has component: " + component.GetType().ToString());
         }
     }
+
+    public static IEnumerator QuitGame()
+    {
+        yield return new WaitForSeconds(3);
+        Debug.Log("Exiting game...");
+
+        Application.Quit();
+
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#endif
+    }
 }
 
 [System.Serializable]
 public class GameStartData
 {
+    public string[] experienceType;
+    public int pendulumRotation;
     public string uniqueId;
     public float phaseDuration;
     public int historyLength;

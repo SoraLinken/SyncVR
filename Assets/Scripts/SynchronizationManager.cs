@@ -48,6 +48,11 @@ public class SynchronizationManager : MonoBehaviour
 
     static public List<SynchronizationDatum> NormalizeListSize(List<SynchronizationDatum> originalList)
     {
+        if(originalList.Count == 0)
+        {
+            return originalList;
+        }
+        
         if (originalList.Count == TargetSampleSize)
         {
             return originalList;
@@ -163,7 +168,7 @@ public class SynchronizationManager : MonoBehaviour
                 pendulumRotationZ -= 360;
             }
 
-            if (pendulumRotationZ < 30 && pendulumRotationZ > -30)
+            if (pendulumRotationZ < 60 && pendulumRotationZ > -60)
             {
                 GetPendulumSynchronization();
             }

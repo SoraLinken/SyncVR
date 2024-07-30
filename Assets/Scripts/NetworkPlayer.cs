@@ -20,11 +20,9 @@ public class NetworkPlayer : NetworkBehaviour
             if (GameManager.avatarType == GameManager.AvatarType.XBot)
             {
                 xAvatar.SetActive(true);
-                yAvatar.SetActive(false);
             }
             else
             {
-                xAvatar.SetActive(false);
                 yAvatar.SetActive(true);
             }
         }
@@ -43,12 +41,20 @@ public class NetworkPlayer : NetworkBehaviour
             if (avatar.avatarType == (int)GameManager.AvatarType.XBot)
             {
                 xAvatar.SetActive(true);
-                yAvatar.SetActive(false);
+                Renderer renderer = xAvatar.transform.Find("Renderer_Outfit_Top").GetComponent<Renderer>();
+                if (ColorUtility.TryParseHtmlString("#923e94", out Color newColor))
+                {
+                    renderer.material.color = newColor;
+                }
             }
             else
             {
-                xAvatar.SetActive(false);
                 yAvatar.SetActive(true);
+                Renderer renderer = yAvatar.transform.Find("Renderer_Outfit_Top").GetComponent<Renderer>();
+                if (ColorUtility.TryParseHtmlString("#923e94", out Color newColor))
+                {
+                    renderer.material.color = newColor;
+                }
             }
         }, (error) => Debug.Log("Error fetching avatar type")));
     }
