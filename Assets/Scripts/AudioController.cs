@@ -2,9 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Singleton class responsible for managing audio playback within the game.
-/// </summary>
+
+// Generic class to manage audio playback in the scene.
 public class AudioController : MonoBehaviour
 {
     public static AudioController Instance { get; private set; }
@@ -15,10 +14,7 @@ public class AudioController : MonoBehaviour
     {
         Instance = this;
     }
-    
-    /// <summary>
-    /// Plays the assigned audio clip once using the AudioSource component.
-    /// </summary>
+
     public void PlaySound()
     {
         source.PlayOneShot(clip);

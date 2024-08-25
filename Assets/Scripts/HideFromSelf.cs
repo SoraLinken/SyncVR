@@ -1,6 +1,8 @@
 using UnityEngine;
 using Unity.Netcode;
 
+
+// Hides the attached GameObject if it is owned by the local player
 public class HideFromSelf : NetworkBehaviour
 {
     void Start()

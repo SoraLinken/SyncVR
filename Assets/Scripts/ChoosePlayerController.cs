@@ -4,6 +4,8 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+
+// Responsible for handling the player selection screen.
 public class ChoosePlayerController : MonoBehaviour
 {
     static public ChoosePlayerController Instance { get; private set; }

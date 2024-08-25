@@ -1,5 +1,7 @@
 using UnityEngine;
 
+
+// Generic class to manage the pendulum collision with another object (e.g. the character)
 public class PendulumCollision : MonoBehaviour
 {
     void OnCollisionEnter(Collision collision)

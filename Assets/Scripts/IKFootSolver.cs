@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+
+// Responsible for solving the inverse kinematics of the feet of the player character.
 public class IKFootSolver : MonoBehaviour
 {
     public bool isMovingForward;
@@ -9,25 +11,27 @@ public class IKFootSolver : MonoBehaviour
     [SerializeField] LayerMask terrainLayer = default;
     [SerializeField] Transform body = default;
     [SerializeField] IKFootSolver otherFoot = default;
-    [SerializeField] float speed = 4;
-    [SerializeField] float stepDistance = .2f;
-    [SerializeField] float stepLength = .2f;
-    [SerializeField] float sideStepLength = .1f;
+    [SerializeField] float speed = 4; // Walking speed
+    [SerializeField] float stepDistance = .2f; // Distance between steps
+    [SerializeField] float stepLength = .2f; // How much time the foot is in the air when moving forward
+    [SerializeField] float sideStepLength = .1f; // How much time the foot is in the air when moving sideways
 
-    [SerializeField] float stepHeight = .3f;
-    [SerializeField] Vector3 footOffset = default;
+    [SerializeField] float stepHeight = .3f; // How high the foot goes when walking
+    [SerializeField] Vector3 footOffset = default; // Offset of the foot in all directions
 
     public Vector3 footRotOffset;
-    public float footYPosOffset = 0.1f;
+    public float footYPosOffset = 0.1f; // Offset of the foot from the ground
 
-    public float rayStartYOffset = 0;
-    public float rayLength = 1.5f;
+    public float rayStartYOffset = 0; // Offset of the ray (helps in solving direction) the foot
+    public float rayLength = 1.5f; // Length of the ray
     
     float footSpacing;
     Vector3 oldPosition, currentPosition, newPosition;
     Vector3 oldNormal, currentNormal, newNormal;
     float lerp;
 
+
+    // Setup the initial values based on player position
     private void Start()
     {
         footSpacing = transform.localPosition.x;
@@ -36,8 +40,7 @@ public class IKFootSolver : MonoBehaviour
         lerp = 1;
     }
 
-    // Update is called once per frame
-
+    // Update the foot position based on the raycast hit every frame
     void Update()
     {
         transform.position = currentPosition + Vector3.up * footYPosOffset;
@@ -88,6 +91,7 @@ public class IKFootSolver : MonoBehaviour
         }
     }
 
+    // Draw the sphere at the new position of the foot (for debugging)
     private void OnDrawGizmos()
     {
 

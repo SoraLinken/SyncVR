@@ -4,6 +4,8 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+
+// Generic class to manage a slider in the scene
 public class SliderController : MonoBehaviour
 {
     public GameObject agreeNumberGameObject;

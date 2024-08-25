@@ -17,7 +17,7 @@ public class NetworkConnect : MonoBehaviour
     public static NetworkConnect Instance { get; private set; } // Singleton instance
     public int maxConnection = 20;
     public UnityTransport transport;
-    public bool activateMultiplayer;
+    public bool activateMultiplayer; // Is the multiplayer feature enabled? (helps in debugging)
 
     private Lobby currentLobby;
     private float heartBeatTimer;
@@ -26,6 +26,8 @@ public class NetworkConnect : MonoBehaviour
 
     private async void Awake()
     {
+
+        // Only allow one instance of the NetworkConnect object
         if (Instance == null)
         {
             Instance = this;
@@ -53,6 +55,8 @@ public class NetworkConnect : MonoBehaviour
         }
     }
 
+
+    // Start or join a lobby
     public async Task JoinOrCreate(int retryCount = 0)
     {
         string lobbyName = "SyncVR";
@@ -60,6 +64,8 @@ public class NetworkConnect : MonoBehaviour
         {
             try
             {
+
+                // Find lobby by name
                 QueryLobbiesOptions options = new QueryLobbiesOptions
                 {
                     Count = 1,
@@ -71,7 +77,6 @@ public class NetworkConnect : MonoBehaviour
                         value: lobbyName)
                 }
                 };
-
                 QueryResponse lobbies = await Lobbies.Instance.QueryLobbiesAsync(options);
                 if (lobbies.Results.Count > 0)
                 {
@@ -109,6 +114,8 @@ public class NetworkConnect : MonoBehaviour
         }
     }
 
+
+    // Setup lobby and relay (P2P connection)
     public async Task Create(string lobbyName)
     {
         try
@@ -140,6 +147,7 @@ public class NetworkConnect : MonoBehaviour
         }
     }
 
+    // Healthcheck and ping to keep the connection alive
     private void Update()
     {
         if (!activateMultiplayer || currentLobby == null)

@@ -2,6 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
+
+
+// Handle the player's avatar after connection
 public class NetworkPlayer : NetworkBehaviour
 {
     public GameObject xAvatar;
@@ -32,6 +35,7 @@ public class NetworkPlayer : NetworkBehaviour
         }
     }
 
+    // Fetch the other player's avatar type
     void HandleOtherPlayerAvatarType()
     {
         StartCoroutine(APIClient.GetRequest($"/avatars/other?uniqueId={GameManager.uniqueId}&email={GameManager.email}", (data) =>
@@ -58,6 +62,8 @@ public class NetworkPlayer : NetworkBehaviour
             }
         }, (error) => Debug.Log("Error fetching avatar type")));
     }
+
+    // Update visual position and rotation every frame (of the rig)
     private void Update()
     {
         if (IsOwner && VRRigReferences.Singleton != null)

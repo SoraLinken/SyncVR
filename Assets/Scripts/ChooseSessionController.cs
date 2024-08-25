@@ -4,6 +4,8 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+
+// Responsible for handling the session selection screen.
 public class ChooseSessionController : MonoBehaviour
 {
     public Slider slider;

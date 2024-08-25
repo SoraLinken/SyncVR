@@ -12,9 +12,10 @@ using UnityEngine.XR;
 [System.Serializable]
 public struct SynchronizationDatum
 {
-    public float value;
-    public float time;
+    public float value;  // The synchronization score
+    public float time;   // Time at which the score was recorded
 
+    // Constructor to initialize SynchronizationDatum
     public SynchronizationDatum(float value, float time)
     {
         this.value = value;
@@ -22,37 +23,37 @@ public struct SynchronizationDatum
     }
 }
 
-
 public class SynchronizationManager : MonoBehaviour
 {
-    private const int TargetSampleSize = 1000;
+    private const int TargetSampleSize = 1000;  // Target size for sample normalization
     private Dictionary<ulong, Dictionary<string, Queue<(Vector3 position, Quaternion rotation)>>> history =
-        new Dictionary<ulong, Dictionary<string, Queue<(Vector3 position, Quaternion rotation)>>>();
+        new Dictionary<ulong, Dictionary<string, Queue<(Vector3 position, Quaternion rotation)>>>();  // History for each network player
 
-    public static List<NetworkObject> networkPlayers = new List<NetworkObject>();
+    public static List<NetworkObject> networkPlayers = new List<NetworkObject>();  // List of all network players
 
     public Dictionary<string, Queue<(Vector3 position, Quaternion rotation)>> localPlayerHistory =
-        new Dictionary<string, Queue<(Vector3 position, Quaternion rotation)>>();
+        new Dictionary<string, Queue<(Vector3 position, Quaternion rotation)>>();  // Local player's history
 
+    public static List<SynchronizationDatum> synchronizationHands = new List<SynchronizationDatum>();  // Synchronization data for hands
+    public static List<SynchronizationDatum> synchronizationPendulum = new List<SynchronizationDatum>();  // Synchronization data for pendulum
 
-    public static List<SynchronizationDatum> synchronizationHands = new List<SynchronizationDatum>();
-    public static List<SynchronizationDatum> synchronizationPendulum = new List<SynchronizationDatum>();
+    private bool headHit = false;  // Track whether the pendulum hit the player's head
 
-
-    private bool headHit = false;
     void Start()
     {
+        // Repeatedly update network players at a defined rate
         InvokeRepeating("UpdateNetworkPlayers", 0f, GameManager.rateOfTesting);
     }
 
-
+    // Normalize list to match the target sample size through interpolation or downsampling
     static public List<SynchronizationDatum> NormalizeListSize(List<SynchronizationDatum> originalList)
     {
-        if(originalList.Count == 0)
+        if (originalList.Count == 0)
         {
             return originalList;
         }
-        
+
+        // Return the list if it already has the target size
         if (originalList.Count == TargetSampleSize)
         {
             return originalList;
@@ -62,7 +63,7 @@ public class SynchronizationManager : MonoBehaviour
 
         if (originalList.Count < TargetSampleSize)
         {
-            // Interpolation
+            // Interpolate data to increase list size to match target sample size
             for (int i = 0; i < TargetSampleSize; i++)
             {
                 float t = i / (float)(TargetSampleSize - 1);
@@ -72,7 +73,7 @@ public class SynchronizationManager : MonoBehaviour
         }
         else
         {
-            // Downsampling
+            // Downsample data by selecting elements to reduce the list size to target sample size
             for (int i = 0; i < TargetSampleSize; i++)
             {
                 float t = i / (float)(TargetSampleSize - 1);
@@ -84,6 +85,7 @@ public class SynchronizationManager : MonoBehaviour
         return normalizedList;
     }
 
+    // Interpolates between two points in the list to return a SynchronizationDatum at a given t (0-1 range)
     static SynchronizationDatum Interpolate(List<SynchronizationDatum> list, float t)
     {
         int count = list.Count - 1;
@@ -105,18 +107,19 @@ public class SynchronizationManager : MonoBehaviour
         return new SynchronizationDatum(interpolatedValue, interpolatedTime);
     }
 
-
+    // Update the list of network players by finding all game objects tagged as "Player"
     void UpdateNetworkPlayers()
     {
         GameObject[] allObjects = GameObject.FindGameObjectsWithTag("Player");
 
+        // Ensure that the networkPlayers list contains at least 2 players
         if (networkPlayers.Count < 2)
         {
-            // Debug.Log("Network players count less than 2");
             foreach (GameObject obj in allObjects)
             {
                 NetworkObject netObject = obj.GetComponent<NetworkObject>();
-                // Debug.Log("Network Id: " + netObject);
+
+                // Add the player to the list if it's not already there
                 if (netObject != null && !networkPlayers.Any(p => p.NetworkObjectId == netObject.NetworkObjectId))
                 {
                     networkPlayers.Add(netObject);
@@ -128,6 +131,7 @@ public class SynchronizationManager : MonoBehaviour
             }
         }
 
+        // Update the history for each network player
         foreach (var netObject in networkPlayers)
         {
             if (!history.ContainsKey(netObject.NetworkObjectId))
@@ -135,34 +139,37 @@ public class SynchronizationManager : MonoBehaviour
                 history[netObject.NetworkObjectId] = new Dictionary<string, Queue<(Vector3, Quaternion)>>();
             }
 
-            // Update the general history for all network players
+            // Update history for the network player
             UpdateHistory(netObject, history[netObject.NetworkObjectId], GameManager.historyLength);
 
-            // Special handling for the local player with a separate history dictionary
+            // Handle history for the local player without a max records limit
             if (netObject.IsLocalPlayer)
             {
-                // Update the local player's history without a max records limit
                 UpdateHistory(netObject, localPlayerHistory, int.MaxValue);
             }
         }
 
+        // Check synchronization when more than one player is present
         if (networkPlayers.Count > 1)
         {
             CheckSynchronization();
         }
     }
 
+    // Function to check synchronization based on the current phase of the game
     void CheckSynchronization()
     {
         if ((GameManager.currentPhase != (int)Phase.Synchronization && GameManager.currentPhase != (int)Phase.SwingingBall) || networkPlayers.Count < 2)
         {
-            // Debug.Log("Not in synchronization phase or not enough players");
-            GameManager.ChangeWallPaintColorFunction(Color.white);
+            GameManager.ChangeWallPaintColorFunction(Color.white);  // Default color when not in sync phase
             return;
         }
+
         float pendulumRotationZ = GameManager.Pendulum.transform.rotation.eulerAngles.z;
+        
         if (GameManager.currentPhase == (int)Phase.SwingingBall)
         {
+            // Adjust rotation values for synchronization checks
             if (pendulumRotationZ > 180)
             {
                 pendulumRotationZ -= 360;
@@ -170,74 +177,72 @@ public class SynchronizationManager : MonoBehaviour
 
             if (pendulumRotationZ < 60 && pendulumRotationZ > -60)
             {
-                GetPendulumSynchronization();
+                GetPendulumSynchronization();  // Check pendulum synchronization if within bounds
             }
             else
             {
-                headHit = false;
+                headHit = false;  // Reset head hit state
             }
         }
         else
         {
-            GetHandSynchronization();
-            // UpdateSyncPercentageUI(Math.Max(0, syncScore));
+            GetHandSynchronization();  // Check hand synchronization
         }
     }
 
-
+    // Calculate pendulum synchronization score and update game visuals accordingly
     double GetPendulumSynchronization()
     {
         double syncScore = 0;
 
         PendulumCollisionDetection pendulumCollision = GameManager.Pendulum.GetComponent<PendulumCollisionDetection>();
 
-        if (pendulumCollision.IsOverRug())
+        if (pendulumCollision.IsOverRug())  // Check if pendulum is above the rug area
         {
-            Debug.Log("Ball is above the rug");
             if (headHit)
             {
-                syncScore = 0;
+                syncScore = 0;  // Reset score if head was already hit
             }
             else if (pendulumCollision.IsCollidingWithHead())
             {
-                headHit = true;
+                headHit = true;  // Mark head hit and start vibration feedback
                 StartVibration();
                 syncScore = 0;
             }
             else
             {
-                syncScore = 100;
+                syncScore = 100;  // Assign maximum score if head is not hit
             }
 
-            synchronizationPendulum.Add(new SynchronizationDatum((float)syncScore, GameManager.timeRemaining));
-            GameManager.ChangeWallPaintColorBasedOnNumber((int)syncScore);
+            synchronizationPendulum.Add(new SynchronizationDatum((float)syncScore, GameManager.timeRemaining));  // Record score
+            GameManager.ChangeWallPaintColorBasedOnNumber((int)syncScore);  // Update visual feedback
             return syncScore;
         }
         return 0;
     }
 
-
-
-
-
-
+    // Trigger haptic feedback for VR devices when head is hit
     void StartVibration()
     {
         HapticCapabilities capabilities;
         InputDevice device = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
+
         if (device.TryGetHapticCapabilities(out capabilities) && capabilities.supportsImpulse)
         {
             uint channel = 0;
-            device.SendHapticImpulse(channel, 1.0f, 1.0f); // Send vibration for 1 second
-            Invoke("StopVibration", 1.0f); // Stop vibration after 1 second
+            device.SendHapticImpulse(channel, 1.0f, 1.0f);  // Send vibration for 1 second
+            Invoke("StopVibration", 1.0f);  // Schedule vibration stop
         }
     }
 
+    // Stop the vibration for the VR device
     void StopVibration()
     {
         InputDevice device = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
         device.StopHaptics();
     }
+
+    // Calculate hand synchronization score based on position differences between players
     double GetHandSynchronization()
     {
         double syncScore = 0;
@@ -247,6 +252,7 @@ public class SynchronizationManager : MonoBehaviour
         const double positionNormalizer = 0.97;
         const double epsilon = 1e-6;
 
+        // Compare positions between each pair of players
         for (int i = 0; i < networkPlayers.Count; i++)
         {
             for (int j = i + 1; j < networkPlayers.Count; j++)
@@ -268,6 +274,7 @@ public class SynchronizationManager : MonoBehaviour
                     var array2 = queue2.ToArray();
                     int count = Math.Min(array1.Length, array2.Length);
 
+                    // Compute the average difference in position between two players
                     for (int k = 0; k < count; k++)
                     {
                         double positionDiff = Vector3.Distance(array1[k].position, array2[k].position);
@@ -275,14 +282,13 @@ public class SynchronizationManager : MonoBehaviour
                     }
 
                     averagePositionDifference /= count;
-
                     totalDifference += averagePositionDifference;
                 }
                 comparisons++;
             }
         }
 
-
+        // Calculate the final synchronization score
         if (comparisons > 0)
         {
             syncScore = Math.Max(0, 100 - Math.Sqrt(Math.Max(0, totalDifference / comparisons + epsilon)));
@@ -292,14 +298,12 @@ public class SynchronizationManager : MonoBehaviour
             syncScore = 0;
         }
 
-        // Debug.Log(syncScore);
-
-        synchronizationHands.Add(new SynchronizationDatum((float)syncScore, GameManager.timeRemaining));
-        GameManager.ChangeWallPaintColorBasedOnNumber((int)syncScore);
+        synchronizationHands.Add(new SynchronizationDatum((float)syncScore, GameManager.timeRemaining));  // Record the hand sync score
+        GameManager.ChangeWallPaintColorBasedOnNumber((int)syncScore);  // Update game visuals based on score
         return syncScore;
     }
 
-
+    // Normalize the movement data in a queue by correcting outliers
     Queue<(Vector3 position, Quaternion rotation)> NormalizeQueue(Queue<(Vector3 position, Quaternion rotation)> originalQueue)
     {
         var list = originalQueue.ToList();
@@ -308,37 +312,37 @@ public class SynchronizationManager : MonoBehaviour
             var prevMove = GetMovement(list[i - 1].position, list[i].position);
             var nextMove = GetMovement(list[i].position, list[i + 1].position);
 
+            // Correct outliers in movement direction by averaging surrounding points
             if (prevMove == nextMove)
             {
-                // Correct the outlier
                 list[i] = ((list[i - 1].position + list[i + 1].position) / 2, list[i].rotation);
             }
         }
         return new Queue<(Vector3 position, Quaternion rotation)>(list);
     }
 
+    // Determine whether the movement is upwards or downwards
     Movement GetMovement(Vector3 previous, Vector3 current)
     {
         return current.y > previous.y ? Movement.Up : Movement.Down;
     }
+
     enum Movement
     {
         Up,
         Down
     }
 
-
+    // Update the synchronization percentage UI on screen
     void UpdateSyncPercentageUI(double score)
     {
-        // Find the text GameObject with the tag "SyncPercentage"
         GameObject textObject = GameObject.FindWithTag("SyncPercentage");
         if (textObject != null)
         {
-            // Update the text component with the new score
             TextMeshProUGUI syncText = textObject.GetComponent<TextMeshProUGUI>();
             if (syncText != null)
             {
-                syncText.text = $"{score:0.00}%";
+                syncText.text = $"{score:0.00}%";  // Display the score with two decimal places
             }
             else
             {
@@ -351,16 +355,17 @@ public class SynchronizationManager : MonoBehaviour
         }
     }
 
+    // Update position and rotation history for a network player
     void UpdateHistory(NetworkObject netObject, Dictionary<string, Queue<(Vector3, Quaternion)>> playerHistory, int limit)
     {
-        string[] tags = { "LeftHandTarget", "RightHandTarget" };
-        bool shouldMirror = ShouldMirror(netObject);
+        string[] tags = { "LeftHandTarget", "RightHandTarget" };  // Tags to track in history
+        bool shouldMirror = ShouldMirror(netObject);  // Determine if the player's data should be mirrored
 
         Transform headTransform = FindChildWithTag(netObject.transform, "HeadTarget");
         Vector3 netObjectPosition = headTransform.position;
         Quaternion netObjectRotation = headTransform.rotation;
 
-        // Debug.Log($"Player: {netObject.NetworkObjectId}, Mirror: {shouldMirror}, Position: {netObjectPosition}, Rotation: {netObjectRotation}");
+        // If mirroring is needed, apply necessary transformations
         if (shouldMirror)
         {
             netObjectPosition = new Vector3(-netObjectPosition.x, netObjectPosition.y, netObjectPosition.z);
@@ -377,12 +382,14 @@ public class SynchronizationManager : MonoBehaviour
                 Vector3 worldPosition = targetTransform.position;
                 Quaternion worldRotation = targetTransform.rotation;
 
+                // Apply mirroring to world coordinates if necessary
                 if (shouldMirror)
                 {
                     worldPosition = new Vector3(-worldPosition.x, worldPosition.y, worldPosition.z);
                     worldRotation = new Quaternion(worldRotation.x, -worldRotation.y, -worldRotation.z, worldRotation.w);
                 }
 
+                // Convert to local space
                 Vector3 localPosition = Quaternion.Inverse(netObjectRotation) * (worldPosition - netObjectPosition);
                 Quaternion localRotation = Quaternion.Inverse(netObjectRotation) * worldRotation;
 
@@ -392,11 +399,11 @@ public class SynchronizationManager : MonoBehaviour
                     localRotation = new Quaternion(-localRotation.x, localRotation.y, localRotation.z, -localRotation.w);
                 }
 
-                // Debug.Log($"Player: {netObject.NetworkObjectId}, Tag: {tag}, Local Position: {localPosition}, Local Rotation: {localRotation}"); 
-                tempData[tag] = (localPosition, localRotation);
+                tempData[tag] = (localPosition, localRotation);  // Store the transformed data
             }
         }
 
+        // Add the data to the player's history and maintain the size limit
         foreach (var tag in tags)
         {
             if (!playerHistory.ContainsKey(tag))
@@ -408,7 +415,6 @@ public class SynchronizationManager : MonoBehaviour
             {
                 playerHistory[tag].Enqueue(tempData[tag]);
 
-                // Maintain the queue size limit, except for local player with no limit
                 if (playerHistory[tag].Count > limit)
                 {
                     playerHistory[tag].Dequeue();
@@ -417,17 +423,17 @@ public class SynchronizationManager : MonoBehaviour
         }
     }
 
-
+    // Determines if the player's view should be mirrored based on their relative facing angle
     bool ShouldMirror(NetworkObject netObject)
     {
-        if (!netObject.IsLocalPlayer)  // Assuming IsLocalPlayer identifies the correct player to mirror
+        if (!netObject.IsLocalPlayer)  
             return false;
 
         Vector3 localForward = netObject.transform.forward;
         Vector3 bestMatchForward;
         float smallestAngle = float.MaxValue;
 
-        // Assuming access to other players' NetworkObject, refine the selection of the opposing player
+        // Find the player who is directly facing the local player
         foreach (var player in networkPlayers)
         {
             if (player.NetworkObjectId != netObject.NetworkObjectId)
@@ -441,11 +447,11 @@ public class SynchronizationManager : MonoBehaviour
             }
         }
 
-        // More accurate check: Are they approximately facing each other?
-        // Note: Vector3.Angle gives the smallest angle between vectors (0-180 degrees), so for directly facing each other, angle should be close to 180
+        // Mirror if the angle between players is between 90 and 180 degrees
         return smallestAngle > 90 && smallestAngle < 180;
     }
 
+    // Helper function - Recursively search for a Transform child object with a specific tag
     Transform FindChildWithTag(Transform parent, string tag)
     {
         foreach (Transform child in parent)
@@ -463,5 +469,4 @@ public class SynchronizationManager : MonoBehaviour
         }
         return null;
     }
-
 }

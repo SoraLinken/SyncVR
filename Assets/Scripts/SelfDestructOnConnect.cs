@@ -1,6 +1,8 @@
 using UnityEngine;
 using Unity.Netcode;
 
+
+// Generic class to self destruct once a connection is established between both players
 public class SelfDestructOnConnect : NetworkBehaviour
 {
     // Start is called before the first frame update

@@ -1,5 +1,7 @@
 using UnityEngine;
 
+
+// Handle collision detection for the pendulum and the players head
 public class PendulumCollisionDetection : MonoBehaviour
 {
     private bool isOverRug = false;

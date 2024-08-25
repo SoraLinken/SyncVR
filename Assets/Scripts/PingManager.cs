@@ -2,6 +2,8 @@ using UnityEngine;
 using Unity.Netcode;
 using Unity.Collections;  // Ensure this namespace is included for Allocator and buffer usage
 
+
+// Used for debugging, check ping time
 public class PingManager : NetworkBehaviour
 {
     private float lastPingTime;

@@ -11,6 +11,8 @@ public class NetworkAnimationInput
     public InputActionProperty action;
 }
 
+
+// Same as AnimateOnInput, but for networked objects (after players are connected).
 public class NetworkAnimateOnInput : NetworkBehaviour
 {
     public List<AnimationInput> animationInputs;
@@ -19,7 +21,7 @@ public class NetworkAnimateOnInput : NetworkBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (IsOwner)
+        if (IsOwner) // Only effect the local player
         {
             foreach (var item in animationInputs)
             {

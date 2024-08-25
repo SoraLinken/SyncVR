@@ -25,6 +25,7 @@ public class QuestionnaireData
 }
 
 
+// Responsible for handling the questionnaire screen.
 public class QuestionController : MonoBehaviour
 {
     public Slider slider;
@@ -74,6 +75,7 @@ public class QuestionController : MonoBehaviour
         nextButtonGameObject.GetComponent<Button>().onClick.AddListener(OnNextButtonClick);
     }
 
+    // After finishing the questionnaire, submit the answers to the server
     void OnQuestionnaireFinished()
     {
         QuestionnaireData data = new QuestionnaireData(GameManager.uniqueId, answers, GameManager.email, SynchronizationManager.NormalizeListSize(SynchronizationManager.synchronizationHands), SynchronizationManager.synchronizationPendulum);
@@ -105,6 +107,7 @@ public class QuestionController : MonoBehaviour
         StartCoroutine(GameManager.QuitGame());
     }
 
+    // Move to the next question
     void OnNextButtonClick()
     {
         answers.Add((int)slider.value);

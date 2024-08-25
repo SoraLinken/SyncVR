@@ -1,5 +1,7 @@
 using UnityEngine;
 
+
+// Class to handle player collision with the avatar selection objects (XBot and YBot on the portals)
 public class PlayerCollisionHandler : MonoBehaviour
 {
  
